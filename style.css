@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+
+/* === ОБЩИЙ СТИЛЬ === */
+body { 
+  font-family: 'Montserrat', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  color: #e2e8f0; text-align: center; margin: 0; padding: 0; min-height: 100vh;
+}
+h1, h2, h3 { color: #fbbf24; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-top: 15px;}
+
+#main-screen, #battle-screen { padding: 15px; max-width: 600px; margin: 0 auto; }
+#battle-screen { display: none; } 
+
+.nav-menu { display: flex; background: rgba(15, 23, 42, 0.9); overflow-x: auto; white-space: nowrap; border-bottom: 2px solid #e11d48; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+.nav-tab { flex: 1; padding: 15px; background: none; border: none; color: #64748b; font-size: 14px; font-weight: 700; cursor: not-allowed; text-transform: uppercase; }
+.nav-tab.active { color: #fff; border-bottom: 3px solid #e11d48; cursor: pointer; text-shadow: 0 0 10px rgba(225, 29, 72, 0.5); }
+
+.class-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+.class-card { background: rgba(30, 41, 59, 0.7); border: 2px solid #334155; padding: 20px 15px; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+.class-card:hover, .class-card:active { transform: translateY(-3px); border-color: #e11d48; box-shadow: 0 8px 15px rgba(225, 29, 72, 0.3); }
+.class-title { font-size: 18px; font-weight: 900; margin-bottom: 8px; color: #fbbf24; letter-spacing: 1px;}
+.class-desc { font-size: 12px; color: #cbd5e1; text-align: left; line-height: 1.4; }
+
+/* Арена */
+.arena { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 10px; }
+.character { background: rgba(30, 41, 59, 0.8); padding: 15px; border-radius: 12px; width: 50%; box-sizing: border-box; border: 1px solid #475569; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); display: flex; flex-direction: column; }
+.char-name { font-size: 16px; margin: 0 0 10px 0; font-weight: 700; }
+
+/* Визуальные полоски (Прогресс-бары) */
+.bar-container { background: #0f172a; border-radius: 6px; width: 100%; height: 22px; margin-bottom: 8px; border: 1px solid #334155; overflow: hidden; position: relative;}
+.bar-text { position: absolute; width: 100%; text-align: center; font-size: 12px; font-weight: bold; line-height: 22px; color: white; text-shadow: 1px 1px 2px black; z-index: 2;}
+.hp-fill { height: 100%; background: linear-gradient(90deg, #be123c, #f43f5e); transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); width: 100%; }
+
+/* Панель навыков */
+.skills-panel { margin-top: auto; padding-top: 10px; border-top: 1px dashed #475569; display: flex; flex-direction: column; gap: 5px; }
+.skill-slot { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 5px; position: relative; overflow: hidden; }
+.skill-slot-title { font-size: 11px; color: #fbbf24; font-weight: bold; margin-bottom: 3px; position: relative; z-index: 2;}
+
+.skill-fill { height: 100%; background: linear-gradient(90deg, #0369a1, #0ea5e9); transition: width 0.4s ease; width: 0%; position: absolute; top: 0; left: 0; z-index: 1; opacity: 0.5;}
+.skill-ready-fill { background: linear-gradient(90deg, #b45309, #f59e0b); animation: glow 1.5s infinite alternate; opacity: 0.8;}
+@keyframes glow { from { filter: brightness(1); } to { filter: brightness(1.3); } }
+
+.skill-progress-text { font-size: 10px; color: #e2e8f0; position: relative; z-index: 2; font-weight: bold;}
+
+/* Кнопки */
+.controls { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.action-btn { color: white; border: none; padding: 18px 10px; font-size: 15px; border-radius: 8px; cursor: pointer; font-weight: 900; flex: 1; text-transform: uppercase; letter-spacing: 1px; transition: transform 0.1s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+.action-btn:active { transform: scale(0.95); }
+.btn-attack { background: linear-gradient(135deg, #be123c, #e11d48); }
+.btn-defend { background: linear-gradient(135deg, #1d4ed8, #3b82f6); }
+.btn-skill { background: linear-gradient(135deg, #b45309, #f59e0b); color: #fff; display: none; width: 100%; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+.btn-return { background: linear-gradient(135deg, #15803d, #22c55e); width: 100%; display: none; }
+
+/* Журнал боя */
+#combat-log { background: rgba(15, 23, 42, 0.7); padding: 15px; height: 300px; overflow-y: auto; text-align: left; border-radius: 12px; font-size: 13px; line-height: 1.6; border: 1px solid #334155; }
+.log-entry { margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; }
+.log-entry:last-child { border-bottom: none; }
+
+.text-dmg { color: #f43f5e; font-weight: bold;}
+.text-heal { color: #10b981; font-weight: bold;}
+.text-skill { color: #fbbf24; font-weight: bold;}
+.text-block { color: #94a3b8; }
+.text-info { color: #38bdf8; font-style: italic; font-size: 12px; display: block; margin-top: 4px;}
