@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Битва Средиземья</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="nav-menu">
+    <button class="nav-tab active">⚔️ Бой</button>
+    <button class="nav-tab disabled">👤 Герой</button>
+    <button class="nav-tab disabled">🎒 Сумка</button>
+    <button class="nav-tab disabled">🏟️ Арены</button>
+    <button class="nav-tab disabled">🏆 Топ</button>
+  </div>
+
+  <div id="main-screen">
+    <h2>Выберите класс</h2>
+    <div class="class-grid">
+      <div class="class-card" onclick="startGame('warrior')">
+        <div class="class-title">🗡️ Воин</div>
+        <div class="class-desc">
+          <b>На вылет:</b> 5 урона -> след. атака пробивает блок.<br>
+          <b>Берсерк:</b> При ХП ≤ 6 атака +2 урона.<br>
+          <b>Боевой раж:</b> При ХП < 10 лечит 1 ХП каждый ход.
+        </div>
+      </div>
+      <div class="class-card" onclick="startGame('assassin')">
+        <div class="class-title">🔪 Убийца</div>
+        <div class="class-desc">
+          <b>Двойной удар:</b> 4 урона -> след. атака х2.<br>
+          <b>Инстинкт:</b> 1 раз за бой уклоняется при ХП ≤ 4.<br>
+          <b>Преследование:</b> 13 сумм. урона -> отравляет врага.
+        </div>
+      </div>
+      <div class="class-card" onclick="startGame('guardian')">
+        <div class="class-title">🛡️ Страж</div>
+        <div class="class-desc">
+          <b>Оплот:</b> 5 блока -> ход неуязвимости и атаки.<br>
+          <b>Контратака:</b> Идеальный блок наносит 1 урон врагу.<br>
+          <b>Возмездие:</b> Каждые 2 блока дают +1 к след. атаке.
+        </div>
+      </div>
+      <div class="class-card" onclick="startGame('priest')">
+        <div class="class-title">✨ Жрец</div>
+        <div class="class-desc">
+          <b>Сила жизни:</b> 3 лечения -> лечит по 2 ХП 2 хода.<br>
+          <b>Молитва:</b> 1 раз за бой при ХП ≤ 8 лечит 6 ХП от удара.<br>
+          <b>Свет:</b> Любое лечение наносит такой же урон врагу.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="battle-screen">
+    <div class="arena">
+      <div class="character">
+        <h2 class="char-name" id="ui-player-name">Вы</h2>
+        <div class="bar-container">
+          <div class="bar-text" id="ui-player-hp-text">20/20</div>
+          <div class="hp-fill" id="ui-player-hp-fill"></div>
+        </div>
+        <div class="skills-panel" id="ui-player-skills"></div>
+      </div>
+      
+      <div class="character">
+        <h2 class="char-name" id="ui-bot-name">Орк</h2>
+        <div class="bar-container">
+          <div class="bar-text" id="ui-bot-hp-text">20/20</div>
+          <div class="hp-fill" id="ui-bot-hp-fill"></div>
+        </div>
+        <div class="skills-panel" id="ui-bot-skills"></div>
+      </div>
+    </div>
+
+    <div class="controls" id="controls">
+      <button class="action-btn btn-attack" id="btn-attack" onclick="playTurn('attack')">🗡️ Атака</button>
+      <button class="action-btn btn-defend" id="btn-defend" onclick="playTurn('defend')">🛡️ Защита</button>
+      <button class="action-btn btn-skill" id="btn-skill" onclick="playTurn('skill')">✨ Применить навык!</button>
+      <button class="action-btn btn-return" id="btn-return" onclick="returnToMenu()">В меню</button>
+    </div>
+
+    <div id="combat-log"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+        </html>
