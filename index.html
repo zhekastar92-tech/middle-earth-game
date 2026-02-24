@@ -41,13 +41,13 @@
 
     <div id="battle-screen" style="display:none;">
       <div class="arena" id="battle-arena">
-        <div class="character" id="player-card">
+        <div class="character" id="player-card" onclick="openCharModal(true)" style="cursor:pointer;">
           <h2 class="char-name" id="ui-player-name">Вы</h2>
           <div class="rank-badge" id="ui-player-rank">0 LP</div>
           <div class="bar-container"><div class="bar-text" id="ui-player-hp-text">20/20</div><div class="hp-fill" id="ui-player-hp-fill"></div></div>
           <div class="skills-panel" id="ui-player-skills"></div>
         </div>
-        <div class="character" id="bot-card">
+        <div class="character" id="bot-card" onclick="openCharModal(false)" style="cursor:pointer;">
           <h2 class="char-name" id="ui-bot-name">Орк</h2>
           <div class="rank-badge" id="ui-bot-rank">0 LP</div>
           <div class="bar-container"><div class="bar-text" id="ui-bot-hp-text">20/20</div><div class="hp-fill" id="ui-bot-hp-fill"></div></div>
