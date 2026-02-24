@@ -1,22 +1,19 @@
-// Безопасная инициализация Telegram API для любых телефонов
+// Безопасная загрузка Telegram API
 const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 if (tg && tg.expand) tg.expand();
 const REAL_PLAYER_NAME = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.first_name : "Вы";
 
-// БАЗА ДАННЫХ СОХРАНЕНИЯ (С защитой от сбоев)
-let gameData;
+// БАЗА ДАННЫХ (Бронебойная защита от старых сохранений)
+let gameData = { lp: 0, imperials: 0, inventory: [], equip: { head: null, body: null, arms: null, legs: null } };
 try {
-  gameData = JSON.parse(localStorage.getItem('middleEarthData'));
-  if (!gameData || typeof gameData !== 'object') throw new Error();
-} catch (e) {
-  gameData = { lp: 0, imperials: 0, inventory: [], equip: { head: null, body: null, arms: null, legs: null } };
-}
-
-// Зашиваем дыры, если у пользователя осталось старое сохранение
-if (!gameData.equip) gameData.equip = { head: null, body: null, arms: null, legs: null };
-if (!gameData.inventory) gameData.inventory = [];
-if (typeof gameData.lp !== 'number') gameData.lp = 0;
-if (typeof gameData.imperials !== 'number') gameData.imperials = 0;
+  let saved = JSON.parse(localStorage.getItem('middleEarthData'));
+  if (saved && typeof saved === 'object') {
+    gameData.lp = saved.lp || 0;
+    gameData.imperials = saved.imperials || 0;
+    gameData.inventory = saved.inventory || [];
+    gameData.equip = saved.equip || { head: null, body: null, arms: null, legs: null };
+  }
+} catch (e) {}
 
 function saveData() { localStorage.setItem('middleEarthData', JSON.stringify(gameData)); }
 
@@ -40,12 +37,17 @@ const SLOT_NAMES = { head: "Шлем", body: "Броня", arms: "Перчатк
 const RARITY_NAMES = { common: "Обычный", uncommon: "Необычный", rare: "Редкий", epic: "Эпический" };
 const SELL_PRICES = { common: 10, uncommon: 100, rare: 500, epic: 1000 };
 
-// НАВИГАЦИЯ (Безопасная)
+// НАВИГАЦИЯ (Безопасный метод без event)
 function switchTab(btn, tabId) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById(tabId).classList.add('active');
+  
   if (btn) btn.classList.add('active');
+  else {
+    let fallbackBtn = document.querySelector(`[onclick="switchTab(this, '${tabId}')"]`);
+    if (fallbackBtn) fallbackBtn.classList.add('active');
+  }
   
   if(tabId === 'tab-hero') updateHeroTab();
   if(tabId === 'tab-bag') updateBagTab();
@@ -70,18 +72,18 @@ function rollLoot(lp) {
 function generateItem(rarity) {
   const slots = ['head', 'body', 'arms', 'legs'];
   const slot = slots[Math.floor(Math.random() * slots.length)];
-  let item = { id: Date.now() + Math.floor(Math.random()*1000), rarity, slot, hp: 0, perk: null, unique: null };
+  let item = { id: Date.now() + Math.floor(Math.random()*1000), rarity: rarity, slot: slot, hp: 0, perk: null, unique: null };
   
   if (rarity === 'common') {
-    item.hp = Math.floor(Math.random() * 2) + 1; // 1-2
+    item.hp = Math.floor(Math.random() * 2) + 1;
   } else if (rarity === 'uncommon') {
-    item.hp = Math.floor(Math.random() * 2) + 1; // 1-2
+    item.hp = Math.floor(Math.random() * 2) + 1;
     if (Math.random() < 0.1) item.perk = generatePerk(slot, 1, 1, 1);
   } else if (rarity === 'rare') {
-    item.hp = Math.floor(Math.random() * 2) + 2; // 2-3
+    item.hp = Math.floor(Math.random() * 2) + 2;
     if (Math.random() < 0.1) item.perk = generatePerk(slot, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1);
   } else if (rarity === 'epic') {
-    item.hp = Math.floor(Math.random() * 3) + 3; // 3-5
+    item.hp = Math.floor(Math.random() * 3) + 3;
     item.perk = generatePerk(slot, Math.floor(Math.random()*3)+2, Math.floor(Math.random()*3)+2, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+2);
     if (Math.random() < 0.02) item.unique = generateUnique(slot);
   }
@@ -103,7 +105,7 @@ function generateUnique(slot) {
   if (slot === 'legs') return { type: 'dodge', val: 0.15, desc: `[УНИК] 15% шанс избежать атаки.` };
 }
 
-// ИНВЕНТАРЬ И UI
+// ИНВЕНТАРЬ
 let selectedItem = null; let isEquipped = false;
 function updateHeroTab() {
   let totalHp = 20;
@@ -186,7 +188,7 @@ function sellItem() {
   saveData(); closeModal(); updateBagTab();
 }
 
-// БОЕВАЯ СИСТЕМА И ИНИЦИАЛИЗАЦИЯ
+// БОЕВАЯ СИСТЕМА
 let player = {}; let bot = {}; let gameIsOver = false;
 
 function getEquipHp(eq) { return Object.values(eq).reduce((sum, item) => sum + (item ? item.hp : 0), 0); }
@@ -217,7 +219,7 @@ function initChar(classId, isBot, lp) {
   
   let hpTotal = 20 + getEquipHp(eq);
   return {
-    classId, className: CLASSES[classId].name, hp: hpTotal, maxHp: hpTotal, lp: lp,
+    classId: classId, className: CLASSES[classId].name, hp: hpTotal, maxHp: hpTotal, lp: lp,
     stats: { dmgDealt: 0, dmgBlocked: 0, healed: 0 }, skillReady: false, hotTurnsLeft: 0,
     usedInstinct: false, usedPrayer: false, poisoned: false, pursuitDmg: 0, retBlocks: 0, retBonus: 0,
     eqP: parsePerks(eq) 
@@ -238,10 +240,20 @@ function startGame(selectedClassId) {
 
   document.getElementById("combat-log").innerHTML = `<div class='log-entry text-skill'>⚔️ Арена: ${currentRank.name}! Бой начинается.</div>`;
   document.getElementById("btn-return").style.display = "none";
-  updateScreen(); switchTab(null, "tab-battle"); document.getElementById("main-screen").style.display = "none"; document.getElementById("battle-screen").style.display = "block";
+  
+  updateScreen(); 
+  switchTab(null, "tab-battle"); 
+  document.getElementById("main-screen").style.display = "none"; 
+  document.getElementById("battle-screen").style.display = "block";
 }
 
-function returnToMenu() { updateMenuProfile(); document.getElementById("main-screen").style.display = "block"; document.getElementById("battle-screen").style.display = "none"; }
+function returnToMenu() { 
+  updateMenuProfile(); 
+  document.getElementById("main-screen").style.display = "block"; 
+  document.getElementById("battle-screen").style.display = "none"; 
+}
+
+function rollDice() { return Math.floor(Math.random() * 3) + 1; }
 
 function playTurn(playerChoice) {
   if (gameIsOver) return;
@@ -250,7 +262,8 @@ function playTurn(playerChoice) {
   if (player.poisoned) { player.hp -= 1; logMsg += `<span class="text-dmg">☠️ Яд: 1 урон вам!</span><br>`; }
   if (bot.poisoned) { bot.hp -= 1; logMsg += `<span class="text-heal">☠️ Яд: 1 урон врагу!</span><br>`; }
 
-  logMsg += processHoT(player, bot, REAL_PLAYER_NAME, "Враг"); logMsg += processHoT(bot, player, "Враг", REAL_PLAYER_NAME);
+  logMsg += processHoT(player, bot, REAL_PLAYER_NAME, "Враг"); 
+  logMsg += processHoT(bot, player, "Враг", REAL_PLAYER_NAME);
 
   let botChoice = bot.skillReady ? 'skill' : (Math.random() < 0.5 ? 'attack' : 'defend');
 
@@ -379,11 +392,15 @@ function updateScreen() {
   document.getElementById("ui-player-rank").innerText = `${pRank.icon} ${gameData.lp} LP`;
   document.getElementById("ui-bot-name").innerText = `Враг (${bot.className})`;
   document.getElementById("ui-bot-rank").innerText = `${bRank.icon} ${bot.lp} LP`;
+  
   document.getElementById("ui-player-hp-fill").style.width = (player.hp / player.maxHp) * 100 + "%";
   document.getElementById("ui-player-hp-text").innerText = `${player.hp} / ${player.maxHp}`;
   document.getElementById("ui-bot-hp-fill").style.width = (bot.hp / bot.maxHp) * 100 + "%";
   document.getElementById("ui-bot-hp-text").innerText = `${bot.hp} / ${bot.maxHp}`;
-  document.getElementById("ui-player-skills").innerHTML = `<div class="skill-slot"><div class="skill-fill ${player.skillReady?'skill-ready-fill':''}" style="width:${player.skillReady?100:Math.min(100,(player.stats[CLASSES[player.classId].reqType]/CLASSES[player.classId].reqAmt)*100)}%"></div><div class="skill-slot-title">⭐ Навык</div></div>`;
+  
+  let pSkillPct = player.skillReady ? 100 : Math.min(100, (player.stats[CLASSES[player.classId].reqType] / CLASSES[player.classId].reqAmt) * 100);
+  document.getElementById("ui-player-skills").innerHTML = `<div class="skill-slot"><div class="skill-fill ${player.skillReady ? 'skill-ready-fill' : ''}" style="width:${pSkillPct}%"></div><div class="skill-slot-title">⭐ Навык</div></div>`;
+  
   if (player.skillReady && !gameIsOver) {
     document.getElementById("btn-attack").style.display = "none"; document.getElementById("btn-defend").style.display = "none";
     document.getElementById("btn-skill").style.display = "block";
@@ -392,14 +409,19 @@ function updateScreen() {
     document.getElementById("btn-skill").style.display = "none";
   }
 }
+
 function logToScreen(msg) { document.getElementById("combat-log").innerHTML = `<div class='log-entry'>${msg}</div>` + document.getElementById("combat-log").innerHTML; }
 
 function checkWinner() {
   if (player.hp <= 0 || bot.hp <= 0) {
-    gameIsOver = true; document.getElementById("btn-attack").style.display = "none"; document.getElementById("btn-defend").style.display = "none";
+    gameIsOver = true; 
+    document.getElementById("btn-attack").style.display = "none"; document.getElementById("btn-defend").style.display = "none";
     document.getElementById("btn-skill").style.display = "none"; document.getElementById("btn-return").style.display = "block";
+    
     let endMsg = "";
-    if (player.hp <= 0 && bot.hp <= 0) { endMsg = "<span class='text-skill'>💀 НИЧЬЯ! (LP не изменились)</span>"; }
+    if (player.hp <= 0 && bot.hp <= 0) { 
+      endMsg = "<span class='text-skill'>💀 НИЧЬЯ! (LP не изменились)</span>"; 
+    }
     else if (player.hp <= 0) {
       gameData.lp = Math.max(0, gameData.lp - 15);
       endMsg = `<span class='text-dmg'>💀 ВЫ ПРОИГРАЛИ!</span> <span class="lp-loss">(-15 LP)</span>`;
@@ -408,8 +430,13 @@ function checkWinner() {
       endMsg = `<span class='text-heal'>🏆 ПОБЕДА!</span> <span class="lp-gain">(+25 LP)</span><br>`;
       let loot = rollLoot(gameData.lp);
       if(loot) {
-        if(gameData.inventory.length < 6) { gameData.inventory.push(loot); endMsg += `<br><br><span class="text-${loot.rarity}">🎁 Выпал предмет: ${loot.name}! Проверьте сумку.</span>`; }
-        else { gameData.imperials += SELL_PRICES[loot.rarity]; endMsg += `<br><br><span class="text-info">💰 Сумка полна! Выпавший ${loot.name} продан за ${SELL_PRICES[loot.rarity]} 🪙.</span>`; }
+        if(gameData.inventory.length < 6) { 
+          gameData.inventory.push(loot); 
+          endMsg += `<br><br><span class="text-${loot.rarity}">🎁 Выпал предмет: ${loot.name}! Проверьте сумку.</span>`; 
+        } else { 
+          gameData.imperials += SELL_PRICES[loot.rarity]; 
+          endMsg += `<br><br><span class="text-info">💰 Сумка полна! Выпавший ${loot.name} продан за ${SELL_PRICES[loot.rarity]} 🪙.</span>`; 
+        }
       }
       if(tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     }
@@ -417,4 +444,4 @@ function checkWinner() {
   }
 }
 
-updateMenuProfile();   
+updateMenuProfile();
