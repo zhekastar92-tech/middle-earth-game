@@ -478,8 +478,9 @@ function updateScreen() {
   document.getElementById("ui-bot-hp-fill").style.width = (bot.hp / bot.maxHp) * 100 + "%";
   document.getElementById("ui-bot-hp-text").innerText = `${bot.hp} / ${bot.maxHp}`;
   
-  let pSkillPct = player.skillReady ? 100 : Math.min(100, (player.stats[CLASSES[player.classId].reqType] / CLASSES[player.classId].reqAmt) * 100);
-  document.getElementById("ui-player-skills").innerHTML = `<div class="skill-slot"><div class="skill-fill ${player.skillReady ? 'skill-ready-fill' : ''}" style="width:${pSkillPct}%"></div><div class="skill-slot-title">⭐ Навык</div></div>`;
+  // ИСПРАВЛЕНО: Возвращаем правильную отрисовку всех 3 навыков для обоих бойцов
+  document.getElementById("ui-player-skills").innerHTML = buildSkillHtml(player);
+  document.getElementById("ui-bot-skills").innerHTML = buildSkillHtml(bot);
   
   if (player.skillReady && !gameIsOver) {
     document.getElementById("btn-attack").style.display = "none"; document.getElementById("btn-defend").style.display = "none";
