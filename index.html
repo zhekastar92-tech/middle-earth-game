@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Битва Средиземья</title>
-<script>document.write('<link rel="stylesheet" href="style.css?v=' + Date.now() + '">');</script>
+<link rel="stylesheet" href="style.css?v=3">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
   <div class="nav-menu">
-    <button class="nav-tab active" onclick="switchTab('tab-battle')">⚔️ Бой</button>
-    <button class="nav-tab" onclick="switchTab('tab-hero')">👤 Герой</button>
-    <button class="nav-tab" onclick="switchTab('tab-bag')">🎒 Сумка</button>
+    <button class="nav-tab active" onclick="switchTab(this, 'tab-battle')">⚔️ Бой</button>
+    <button class="nav-tab" onclick="switchTab(this, 'tab-hero')">👤 Герой</button>
+    <button class="nav-tab" onclick="switchTab(this, 'tab-bag')">🎒 Сумка</button>
     <button class="nav-tab disabled">🏟️ Арены</button>
   </div>
 
@@ -91,6 +91,6 @@
     </div>
   </div>
 
-  <script>document.write('<script src="script.js?v=' + Date.now() + '"><\\/script>');</script>
+  <script src="script.js?v=3"></script>
 </body>
-        </html>
+</html>
