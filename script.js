@@ -31,10 +31,10 @@ try {
   }
 } catch (e) {}
 
-// НЮАНС: Инициализация ботов. Раскидываем им LP вокруг твоих очков, чтобы была конкуренция
-if (!gameData.leaderboard || gameData.leaderboard.length === 0) {
-    let maxLpForBots = Math.max(500, gameData.lp + 300); // Кто-то будет выше тебя!
-    gameData.leaderboard = BOT_NAMES.map(name => ({ name: name, lp: Math.floor(Math.random() * maxLpForBots) }));
+// Принудительно обновляем ботов до 7000-8000 LP (даже если они уже были созданы в старом сохранении)
+let needsLbReset = !gameData.leaderboard || gameData.leaderboard.length === 0 || gameData.leaderboard[0].lp < 5000;
+if (needsLbReset) {
+    gameData.leaderboard = BOT_NAMES.map(name => ({ name: name, lp: Math.floor(Math.random() * 1001) + 7000 }));
 }
 
 function saveData() { localStorage.setItem('middleEarthData', JSON.stringify(gameData)); }
@@ -119,18 +119,44 @@ function renderLeaderboard() {
   let playerRank = -1;
   for (let i = 0; i < allPlayers.length; i++) { if (allPlayers[i].isPlayer) playerRank = i + 1; }
 
-  // Отрисовываем Топ-10
+  // Отрисовываем Топ-10 с точным дизайном из главного меню
   for (let i = 0; i < 10 && i < allPlayers.length; i++) {
       let p = allPlayers[i];
       let rankIcon = (i===0)?'🥇':(i===1)?'🥈':(i===2)?'🥉':`${i+1}`;
-      let rowClass = p.isPlayer ? "lb-item lb-player" : "lb-item";
-      html += `<div class="${rowClass}"><div class="lb-rank">${rankIcon}</div><div class="lb-name">${p.name}</div><div class="lb-lp">${p.lp} LP</div></div>`;
+      let pRank = getRank(p.lp);
+      let nameClass = pRank.textClass ? `profile-name ${pRank.textClass}` : `profile-name`;
+      
+      // Игрок подсвечивается красным свечением, чтобы его было видно
+      let borderStyle = p.isPlayer ? "border: 2px solid #e11d48; background: rgba(225, 29, 72, 0.2); box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);" : "";
+      
+      html += `
+      <div class="profile-header" style="margin-bottom: 10px; ${borderStyle}">
+          <div style="display:flex; align-items:center; gap: 15px;">
+              <div style="font-size: 20px; font-weight: 900; color: #fbbf24; width: 30px; text-align: center;">${rankIcon}</div>
+              <div style="text-align: left;">
+                  <div class="${nameClass}">👤 ${p.name}</div>
+                  <div class="profile-rank">${pRank.icon} ${pRank.name} | ${p.lp} LP</div>
+              </div>
+          </div>
+      </div>`;
   }
 
   // Если игрок не попал в Топ-10, показываем его место в самом низу
   if (playerRank > 10) {
-      html += `<div class="lb-divider">...</div>`;
-      html += `<div class="lb-item lb-player"><div class="lb-rank">${playerRank}</div><div class="lb-name">${REAL_PLAYER_NAME}</div><div class="lb-lp">${gameData.lp} LP</div></div>`;
+      let pRank = getRank(gameData.lp);
+      let nameClass = pRank.textClass ? `profile-name ${pRank.textClass}` : `profile-name`;
+      
+      html += `<div style="text-align: center; color: #94a3b8; font-weight: bold; margin: 15px 0; font-size: 20px;">...</div>`;
+      html += `
+      <div class="profile-header" style="margin-bottom: 10px; border: 2px solid #e11d48; background: rgba(225, 29, 72, 0.2); box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);">
+          <div style="display:flex; align-items:center; gap: 15px;">
+              <div style="font-size: 20px; font-weight: 900; color: #fbbf24; width: 30px; text-align: center;">${playerRank}</div>
+              <div style="text-align: left;">
+                  <div class="${nameClass}">👤 ${REAL_PLAYER_NAME}</div>
+                  <div class="profile-rank">${pRank.icon} ${pRank.name} | ${gameData.lp} LP</div>
+              </div>
+          </div>
+      </div>`;
   }
   document.getElementById("leaderboard-content").innerHTML = html;
 }
@@ -635,24 +661,26 @@ function resolveCombat(atkC, defC, aRoll, dBlock, aName, dName, ignBlock, isSkil
   if (defC.classId === 'assassin' && defC.hp <= 4 && !defC.usedInstinct) { defC.usedInstinct = true; return res + `<span class="text-info">🌑 Инстинкт: ${dName} уклоняется!</span>`; }
   if (Math.random() < defC.eqP.dodge) return res + `<span class="text-info">👢 Сапоги: ${dName} уклоняется!</span>`;
 
+  // ФИКС СТРАЖА: Считаем только реально заблокированный урон (не больше, чем была сама атака)
+  let actualBlocked = ignBlock ? 0 : Math.min(aRoll, dBlock);
+  defC.stats.dmgBlocked += actualBlocked;
+
   if (aRoll > dBlock || ignBlock) {
     let dmg = ignBlock ? aRoll : (aRoll - dBlock);
     if (defC.eqP.blockPierce > 0) { let absorbed = Math.min(dmg, defC.eqP.blockPierce); dmg -= absorbed; defC.eqP.blockPierce = 0; res += `<span class="text-info">👕 Броня поглотила ${absorbed} урона!</span><br>`; }
     if(dmg > 0) res += applyDamage(defC, atkC, dmg, dName, isSkill);
   } else if (aRoll === dBlock) {
     res += `<span class="text-block">Идеальный блок!</span><br>`;
-    atkC.stats.dmgBlocked += aRoll; defC.stats.dmgBlocked += dBlock;
     if (defC.classId === 'guardian') { res += applyDamage(atkC, defC, 1, aName, false); res += `🗡️ <span class="text-info">Контратака!</span><br>`; }
-    if (defC.classId === 'guardian') { defC.retBlocks += dBlock; while(defC.retBlocks >= 2 && defC.retBonus < 5) { defC.retBlocks -= 2; defC.retBonus += 1; } }
+    if (defC.classId === 'guardian') { defC.retBlocks += actualBlocked; while(defC.retBlocks >= 2 && defC.retBonus < 5) { defC.retBlocks -= 2; defC.retBonus += 1; } }
   } else {
     let heal = dBlock - aRoll + defC.eqP.healB;
     if (defC.canHeal) {
         defC.hp = Math.min(defC.maxHp, defC.hp + heal); defC.stats.healed += heal;
         res += `✨ Избыточный блок! ${dName} лечит <span class="text-heal">${heal} ХП</span>.<br>`;
     } else { res += `✨ Избыточный блок! Но ${dName} не может исцеляться.<br>`; }
-    atkC.stats.dmgBlocked += aRoll; defC.stats.dmgBlocked += dBlock;
     if (defC.classId === 'guardian') { res += applyDamage(atkC, defC, 1, aName, false); res += `🗡️ <span class="text-info">Контратака!</span><br>`; }
-    if (defC.classId === 'guardian') { defC.retBlocks += aRoll; while(defC.retBlocks >= 2 && defC.retBonus < 5) { defC.retBlocks -= 2; defC.retBonus += 1; } }
+    if (defC.classId === 'guardian') { defC.retBlocks += actualBlocked; while(defC.retBlocks >= 2 && defC.retBonus < 5) { defC.retBlocks -= 2; defC.retBonus += 1; } }
     if (defC.classId === 'priest') { res += applyDamage(atkC, defC, heal, aName, false); res += `🌟 Свет наносит <span class="text-dmg">${heal} урона</span>!<br>`; }
   }
   return res;
