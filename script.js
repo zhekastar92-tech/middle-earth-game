@@ -18,14 +18,44 @@ try {
 function saveData() { localStorage.setItem('middleEarthData', JSON.stringify(gameData)); }
 
 const RANKS = [
-  { name: "Новичок", icon: "🪨", maxLp: 300, arenaClass: "arena-wood", borderClass: "border-wood", drops: { common: 0.1, uncommon: 0.005, rare: 0, epic: 0 } },
-  { name: "Боец", icon: "🥉", maxLp: 600, arenaClass: "arena-bronze", borderClass: "border-bronze", drops: { common: 0.2, uncommon: 0.01, rare: 0, epic: 0 } },
-  { name: "Гладиатор", icon: "🥈", maxLp: 1000, arenaClass: "arena-silver", borderClass: "border-silver", drops: { common: 0.5, uncommon: 0.05, rare: 0.005, epic: 0 } },
-  { name: "Чемпион", icon: "🥇", maxLp: 1500, arenaClass: "arena-gold", borderClass: "border-gold", drops: { common: 0, uncommon: 0.2, rare: 0.02, epic: 0.004 } },
-  { name: "Мастер", icon: "💎", maxLp: 9999, arenaClass: "arena-gold", borderClass: "border-gold", drops: { common: 0, uncommon: 0, rare: 0.1, epic: 0.01 } }
+  { name: "Железо", icon: "🔘", maxLp: 300, arenaClass: "arena-iron", borderClass: "border-iron", textClass: "" },
+  { name: "Бронза", icon: "🟤", maxLp: 600, arenaClass: "arena-bronze", borderClass: "border-bronze", textClass: "" },
+  { name: "Серебро", icon: "⚪", maxLp: 1000, arenaClass: "arena-silver", borderClass: "border-silver", textClass: "" },
+  { name: "Золото", icon: "🟡", maxLp: 1400, arenaClass: "arena-gold", borderClass: "border-gold", textClass: "" },
+  { name: "Изумруд", icon: "❇️", maxLp: 1800, arenaClass: "arena-emerald", borderClass: "border-emerald", textClass: "" },
+  { name: "Алмаз", icon: "💎", maxLp: 2400, arenaClass: "arena-diamond", borderClass: "border-diamond", textClass: "" },
+  { name: "Мастер", icon: "📀", maxLp: 3000, arenaClass: "arena-master", borderClass: "border-master", textClass: "text-master" },
+  { name: "Грандмастер", icon: "💿", maxLp: 3800, arenaClass: "arena-grandmaster", borderClass: "border-grandmaster", textClass: "text-grandmaster" },
+  { name: "Владыка", icon: "👹", maxLp: 5000, arenaClass: "arena-overlord", borderClass: "border-overlord", textClass: "text-overlord" },
+  { name: "Феникс", icon: "🐦‍🔥", maxLp: 99999, arenaClass: "arena-phoenix", borderClass: "border-phoenix", textClass: "text-phoenix" }
 ];
+
 function getRank(lp) { return RANKS.find(r => lp <= r.maxLp) || RANKS[RANKS.length - 1]; }
 
+// НОВОЕ: Отдельная база шансов для Арен (Яма, Колизей и т.д.)
+function getArenaDrops(lp) {
+  if (lp <= 300) return { common: 0.1, uncommon: 0.005, rare: 0, epic: 0 }; 
+  if (lp <= 600) return { common: 0.2, uncommon: 0.01, rare: 0, epic: 0 }; 
+  if (lp <= 1400) return { common: 0.5, uncommon: 0.05, rare: 0.005, epic: 0 }; 
+  if (lp <= 2400) return { common: 0, uncommon: 0.2, rare: 0.02, epic: 0.004 }; 
+  if (lp <= 3800) return { common: 0, uncommon: 0.3, rare: 0.1, epic: 0.02 };
+  return { common: 0, uncommon: 0, rare: 0.2, epic: 0.05 }; 
+}
+
+// НОВОЕ: Динамический калькулятор LP
+function calculateLpChange(lp, isWin) {
+  let min, max;
+  if (lp <= 1400) { // До Изумруда
+    if (isWin) { min = 20; max = 30; } else { min = 10; max = 15; }
+  } else if (lp <= 2400) { // Изумруд и Алмаз
+    if (isWin) { min = 15; max = 20; } else { min = 15; max = 20; }
+  } else if (lp <= 5000) { // Мастер, Грандмастер, Владыка
+    if (isWin) { min = 10; max = 15; } else { min = 15; max = 20; }
+  } else { // Феникс
+    if (isWin) { min = 5; max = 10; } else { min = 15; max = 20; }
+  }
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 const CLASSES = {
   warrior: { name: "Воин", activeName: "На вылет", reqType: "dmgDealt", reqAmt: 5, p1: "Берсерк", p2: "Боевой раж" },
   assassin: { name: "Убийца", activeName: "Двойной удар", reqType: "dmgDealt", reqAmt: 4, p1: "Инстинкт выживания", p2: "Преследование" },
@@ -55,17 +85,19 @@ function switchTab(btn, tabId) {
 
 function updateMenuProfile() {
   let rank = getRank(gameData.lp);
-  document.getElementById("menu-profile").innerHTML = `<div class="profile-name">👤 ${REAL_PLAYER_NAME}</div><div class="profile-rank">${rank.icon} ${rank.name} | ${gameData.lp} LP</div>`;
+  // Добавляем свечение ника даже в главное меню
+  let nameClass = rank.textClass ? ` class="profile-name ${rank.textClass}"` : ` class="profile-name"`;
+  document.getElementById("menu-profile").innerHTML = `<div${nameClass}>👤 ${REAL_PLAYER_NAME}</div><div class="profile-rank">${rank.icon} ${rank.name} | ${gameData.lp} LP</div>`;
 }
 
 // ГЕНЕРАТОР ПРЕДМЕТОВ
 function rollLoot(lp) {
-  let rank = getRank(lp);
+  let drops = getArenaDrops(lp); // Теперь берем шансы из Арен, а не из рангов
   let roll = Math.random();
-  if (roll < rank.drops.epic) return generateItem('epic');
-  if (roll < rank.drops.epic + rank.drops.rare) return generateItem('rare');
-  if (roll < rank.drops.epic + rank.drops.rare + rank.drops.uncommon) return generateItem('uncommon');
-  if (roll < rank.drops.epic + rank.drops.rare + rank.drops.uncommon + rank.drops.common) return generateItem('common');
+  if (roll < drops.epic) return generateItem('epic');
+  if (roll < drops.epic + drops.rare) return generateItem('rare');
+  if (roll < drops.epic + drops.rare + drops.uncommon) return generateItem('uncommon');
+  if (roll < drops.epic + drops.rare + drops.uncommon + drops.common) return generateItem('common');
   return null;
 }
 
@@ -421,13 +453,24 @@ function buildSkillHtml(char) {
   return html;
 }
 
+function updateMenuProfile() {
+  let rank = getRank(gameData.lp);
+  // Добавляем свечение ника даже в главное меню
+  let nameClass = rank.textClass ? ` class="profile-name ${rank.textClass}"` : ` class="profile-name"`;
+  document.getElementById("menu-profile").innerHTML = `<div${nameClass}>👤 ${REAL_PLAYER_NAME}</div><div class="profile-rank">${rank.icon} ${rank.name} | ${gameData.lp} LP</div>`;
+}
+
 function updateScreen() {
   if (player.hp < 0) player.hp = 0; if (bot.hp < 0) bot.hp = 0;
   let pRank = getRank(gameData.lp); let bRank = getRank(bot.lp);
   
+  // Добавляем классы свечения для ников
   document.getElementById("ui-player-name").innerText = `${REAL_PLAYER_NAME} (${player.className})`;
+  document.getElementById("ui-player-name").className = "char-name " + (pRank.textClass || "");
   document.getElementById("ui-player-rank").innerText = `${pRank.icon} ${gameData.lp} LP`;
+  
   document.getElementById("ui-bot-name").innerText = `Враг (${bot.className})`;
+  document.getElementById("ui-bot-name").className = "char-name " + (bRank.textClass || "");
   document.getElementById("ui-bot-rank").innerText = `${bRank.icon} ${bot.lp} LP`;
   
   document.getElementById("ui-player-hp-fill").style.width = (player.hp / player.maxHp) * 100 + "%";
@@ -435,9 +478,8 @@ function updateScreen() {
   document.getElementById("ui-bot-hp-fill").style.width = (bot.hp / bot.maxHp) * 100 + "%";
   document.getElementById("ui-bot-hp-text").innerText = `${bot.hp} / ${bot.maxHp}`;
   
-  // Возвращаем отрисовку 3 навыков
-  document.getElementById("ui-player-skills").innerHTML = buildSkillHtml(player);
-  document.getElementById("ui-bot-skills").innerHTML = buildSkillHtml(bot);
+  let pSkillPct = player.skillReady ? 100 : Math.min(100, (player.stats[CLASSES[player.classId].reqType] / CLASSES[player.classId].reqAmt) * 100);
+  document.getElementById("ui-player-skills").innerHTML = `<div class="skill-slot"><div class="skill-fill ${player.skillReady ? 'skill-ready-fill' : ''}" style="width:${pSkillPct}%"></div><div class="skill-slot-title">⭐ Навык</div></div>`;
   
   if (player.skillReady && !gameIsOver) {
     document.getElementById("btn-attack").style.display = "none"; document.getElementById("btn-defend").style.display = "none";
@@ -446,7 +488,7 @@ function updateScreen() {
     document.getElementById("btn-attack").style.display = "block"; document.getElementById("btn-defend").style.display = "block";
     document.getElementById("btn-skill").style.display = "none";
   }
-                                                        }
+}
 
 function logToScreen(msg) { document.getElementById("combat-log").innerHTML = `<div class='log-entry'>${msg}</div>` + document.getElementById("combat-log").innerHTML; }
 
@@ -461,11 +503,14 @@ function checkWinner() {
       endMsg = "<span class='text-skill'>💀 НИЧЬЯ! (LP не изменились)</span>"; 
     }
     else if (player.hp <= 0) {
-      gameData.lp = Math.max(0, gameData.lp - 15);
-      endMsg = `<span class='text-dmg'>💀 ВЫ ПРОИГРАЛИ!</span> <span class="lp-loss">(-15 LP)</span>`;
+      let lpLoss = calculateLpChange(gameData.lp, false); // Динамическая потеря
+      gameData.lp = Math.max(0, gameData.lp - lpLoss);
+      endMsg = `<span class='text-dmg'>💀 ВЫ ПРОИГРАЛИ!</span> <span class="lp-loss">(-${lpLoss} LP)</span>`;
     } else {
-      gameData.lp += 25;
-      endMsg = `<span class='text-heal'>🏆 ПОБЕДА!</span> <span class="lp-gain">(+25 LP)</span><br>`;
+      let lpGain = calculateLpChange(gameData.lp, true); // Динамическая победа
+      gameData.lp += lpGain;
+      endMsg = `<span class='text-heal'>🏆 ПОБЕДА!</span> <span class="lp-gain">(+${lpGain} LP)</span><br>`;
+      
       let loot = rollLoot(gameData.lp);
       if(loot) {
         if(gameData.inventory.length < 6) { 
