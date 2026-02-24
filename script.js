@@ -4,7 +4,7 @@ if (tg && tg.expand) tg.expand();
 const REAL_PLAYER_NAME = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.first_name : "Вы";
 
 // БАЗА ДАННЫХ
-let gameData = { lp: 0, imperials: 0, inventory: [], equip: { head: null, body: null, arms: null, legs: null } };
+let gameData = { lp: 0, imperials: 0, inventory: [], equip: { head: null, body: null, arms: null, legs: null }, maxInventory: 6, hugeChestPity: 0 };
 try {
   let saved = JSON.parse(localStorage.getItem('middleEarthData'));
   if (saved && typeof saved === 'object') {
@@ -12,12 +12,13 @@ try {
     gameData.imperials = saved.imperials || 0;
     gameData.inventory = saved.inventory || [];
     gameData.equip = saved.equip || { head: null, body: null, arms: null, legs: null };
+    gameData.maxInventory = saved.maxInventory || 6; // Загрузка расширенной сумки
+    gameData.hugeChestPity = saved.hugeChestPity || 0; // Счетчик гаранта
   }
 } catch (e) {}
 
 function saveData() { localStorage.setItem('middleEarthData', JSON.stringify(gameData)); }
 
-// РАНГИ
 const RANKS = [
   { name: "Железо", icon: "🔘", maxLp: 300, borderClass: "border-iron", textClass: "" },
   { name: "Бронза", icon: "🟤", maxLp: 600, borderClass: "border-bronze", textClass: "" },
@@ -31,7 +32,6 @@ const RANKS = [
   { name: "Феникс", icon: "🐦‍🔥", maxLp: 99999, borderClass: "border-phoenix", textClass: "text-phoenix" }
 ];
 
-// АРЕНЫ
 const ARENAS = [
   { name: "Каменный круг", icon: "🪨", maxLp: 300, arenaClass: "arena-stone" },
   { name: "Лунный чертог", icon: "🌘", maxLp: 600, arenaClass: "arena-moon" },
@@ -85,6 +85,7 @@ function switchTab(btn, tabId) {
   if(tabId === 'tab-hero') updateHeroTab();
   if(tabId === 'tab-bag') updateBagTab();
   if(tabId === 'tab-arenas') renderArenas();
+  if(tabId === 'tab-shop') renderShop();
 }
 
 function updateMenuProfile() {
@@ -103,7 +104,6 @@ function rollLoot(lp) {
   return null;
 }
 
-// ИСПРАВЛЕНИЕ: Бот генерирует вещи для конкретного слота
 function rollBotItemForSlot(lp, slot) {
   let arenaIdx = ARENAS.findIndex(a => lp <= a.maxLp);
   if (arenaIdx === -1) arenaIdx = ARENAS.length - 1;
@@ -121,23 +121,26 @@ function rollBotItemForSlot(lp, slot) {
   } else if (arenaIdx === 4) { 
      rarity = Math.random() < 0.8 ? 'epic' : 'rare';
   } else { 
-     // Звездный Олимп: 95% Эпик, 5% Раре
      rarity = Math.random() < 0.95 ? 'epic' : 'rare';
   }
   
   if (!rarity) return null;
-  return generateItem(rarity, slot); // Передаем слот насильно
+  return generateItem(rarity, slot); 
 }
 
-// ИСПРАВЛЕНИЕ: Теперь функция может принимать конкретный слот (forceSlot)
-function generateItem(rarity, forceSlot = null) {
+// НОВОЕ: Передаем forceUnique из сундука
+function generateItem(rarity, forceSlot = null, forceUnique = false) {
   const slots = ['head', 'body', 'arms', 'legs'];
   const slot = forceSlot ? forceSlot : slots[Math.floor(Math.random() * slots.length)];
   let item = { id: Date.now() + Math.floor(Math.random()*1000), rarity: rarity, slot: slot, hp: 0, perk: null, unique: null };
   if (rarity === 'common') { item.hp = Math.floor(Math.random() * 2) + 1; } 
   else if (rarity === 'uncommon') { item.hp = Math.floor(Math.random() * 2) + 1; if (Math.random() < 0.1) item.perk = generatePerk(slot, 1, 1, 1); } 
   else if (rarity === 'rare') { item.hp = Math.floor(Math.random() * 2) + 2; if (Math.random() < 0.1) item.perk = generatePerk(slot, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1); } 
-  else if (rarity === 'epic') { item.hp = Math.floor(Math.random() * 3) + 3; item.perk = generatePerk(slot, Math.floor(Math.random()*3)+2, Math.floor(Math.random()*3)+2, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+2); if (Math.random() < 0.02) item.unique = generateUnique(slot); }
+  else if (rarity === 'epic') { 
+    item.hp = Math.floor(Math.random() * 3) + 3; 
+    item.perk = generatePerk(slot, Math.floor(Math.random()*3)+2, Math.floor(Math.random()*3)+2, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+2); 
+    if (forceUnique || Math.random() < 0.02) item.unique = generateUnique(slot); 
+  }
   item.name = `${RARITY_NAMES[rarity]} ${SLOT_NAMES[slot]}`;
   return item;
 }
@@ -156,6 +159,7 @@ function generateUnique(slot) {
   if (slot === 'legs') return { type: 'dodge', val: 0.15, desc: `[УНИК] 15% шанс избежать атаки.` };
 }
 
+// === МАГАЗИН И ИНВЕНТАРЬ ===
 let selectedItem = null; let isEquipped = false;
 function updateHeroTab() {
   let totalHp = 20;
@@ -175,14 +179,16 @@ function updateHeroTab() {
 
 function updateBagTab() {
   document.getElementById('bag-count').innerText = gameData.inventory.length;
+  document.getElementById('bag-max').innerText = gameData.maxInventory;
   document.getElementById('imperial-amount').innerText = gameData.imperials;
-  // Обновляем заодно и баланс в магазине
+  
   let shopBal = document.getElementById('shop-imperial-amount');
   if(shopBal) shopBal.innerText = gameData.imperials;
   
   let grid = document.getElementById('inventory-grid');
   grid.innerHTML = '';
-  for(let i=0; i<6; i++) {
+  // Отрисовываем ячейки в зависимости от максимального размера сумки
+  for(let i=0; i < gameData.maxInventory; i++) {
     let item = gameData.inventory[i];
     if (item) { grid.innerHTML += `<div class="inv-slot rarity-${item.rarity} filled" onclick="openItemModalById('${item.id}', false)"><b>${item.name}</b><br>+${item.hp} ХП</div>`; } 
     else { grid.innerHTML += `<div class="inv-slot">Пусто</div>`; }
@@ -217,7 +223,7 @@ function openItemModal(slot, equipped) { if (equipped && gameData.equip[slot]) o
 function closeModal() { document.getElementById('item-modal').style.display = 'none'; }
 
 function equipItem() {
-  if(gameData.inventory.length >= 6 && gameData.equip[selectedItem.slot]) { alert("Сумка полна! Сначала освободите место."); return; }
+  if(gameData.inventory.length >= gameData.maxInventory && gameData.equip[selectedItem.slot]) { alert("Сумка полна! Сначала освободите место."); return; }
   let oldItem = gameData.equip[selectedItem.slot];
   gameData.inventory = gameData.inventory.filter(i => i.id !== selectedItem.id);
   gameData.equip[selectedItem.slot] = selectedItem;
@@ -225,7 +231,7 @@ function equipItem() {
   saveData(); closeModal(); updateBagTab(); updateHeroTab();
 }
 function unequipItem() {
-  if(gameData.inventory.length >= 6) { alert("Сумка полна!"); return; }
+  if(gameData.inventory.length >= gameData.maxInventory) { alert("Сумка полна!"); return; }
   gameData.equip[selectedItem.slot] = null;
   gameData.inventory.push(selectedItem);
   saveData(); closeModal(); updateBagTab(); updateHeroTab();
@@ -233,9 +239,112 @@ function unequipItem() {
 function sellItem() {
   gameData.imperials += SELL_PRICES[selectedItem.rarity];
   gameData.inventory = gameData.inventory.filter(i => i.id !== selectedItem.id);
-  saveData(); closeModal(); updateBagTab();
+  saveData(); closeModal(); updateBagTab(); if(document.getElementById('tab-shop').classList.contains('active')) renderShop();
 }
 
+// ЛОГИКА ТОРГОВЦЕВ
+function getNextSlotCost() {
+  let m = gameData.maxInventory;
+  if (m >= 18) return null;
+  if (m >= 15) return 50000;
+  if (m >= 12) return 20000;
+  if (m >= 9) return 5000;
+  return 500;
+}
+
+function buyBagSlots() {
+  let cost = getNextSlotCost();
+  if (!cost || gameData.imperials < cost) { alert("Недостаточно Империалов!"); return; }
+  gameData.imperials -= cost;
+  gameData.maxInventory += 3;
+  saveData(); updateBagTab(); renderShop();
+}
+
+function buyChest(type) {
+  if (gameData.inventory.length >= gameData.maxInventory) { alert("Сумка полна! Продайте лишние вещи."); return; }
+  
+  let cost = [0, 100, 300, 500, 1000][type];
+  if (gameData.imperials < cost) { alert("Недостаточно Империалов!"); return; }
+
+  gameData.imperials -= cost;
+  let rarity = 'common';
+  let forceUnique = false;
+  let r = Math.random();
+
+  if (type === 1) { // Серый
+      if (r < 0.85) rarity = 'common';
+      else if (r < 0.99) rarity = 'uncommon';
+      else rarity = 'rare';
+  } else if (type === 2) { // Зеленый
+      if (r < 0.60) rarity = 'common';
+      else if (r < 0.80) rarity = 'uncommon';
+      else if (r < 0.99) rarity = 'rare';
+      else rarity = 'epic';
+  } else if (type === 3) { // Синий
+      if (r < 0.40) rarity = 'common';
+      else if (r < 0.70) rarity = 'uncommon';
+      else if (r < 0.97) rarity = 'rare';
+      else rarity = 'epic';
+  } else if (type === 4) { // Фиолетовый
+      gameData.hugeChestPity += 1;
+      if (gameData.hugeChestPity > 100) {
+          rarity = 'epic'; forceUnique = true; gameData.hugeChestPity = 0;
+      } else {
+          if (r < 0.30) rarity = 'common';
+          else if (r < 0.60) rarity = 'uncommon';
+          else if (r < 0.95) rarity = 'rare';
+          else rarity = 'epic';
+      }
+  }
+
+  let item = generateItem(rarity, null, forceUnique);
+  gameData.inventory.push(item);
+  saveData(); updateBagTab(); renderShop();
+  openItemModalById(item.id, false); // Сразу показываем лут!
+}
+
+function renderShop() {
+  let slotCost = getNextSlotCost();
+  let slotText = slotCost ? `+3 слота за ${slotCost} 🪙` : `Сумка максимальна (18)`;
+  let pity = gameData.hugeChestPity || 0;
+
+  let html = `
+    <div class="class-card arena-stone" style="border: 2px solid #94a3b8; text-align: left;">
+        <div class="class-title" style="color:#fbbf24">🎒 Герольд Кожевник</div>
+        <div class="class-desc" style="margin-bottom: 10px;">Увеличивает вместимость вашей сумки. Текущий размер: ${gameData.maxInventory}/18.</div>
+        <button class="action-btn" style="background: ${slotCost && gameData.imperials >= slotCost ? '#22c55e' : '#475569'}; padding: 10px; width: 100%; font-size:12px;" ${(!slotCost || gameData.imperials < slotCost) ? 'disabled' : ''} onclick="buyBagSlots()">🛒 ${slotText}</button>
+    </div>
+
+    <h3 style="margin-top: 20px; color:#f43f5e">🎲 Азартный Бак</h3>
+    <div class="class-desc" style="margin-bottom:10px;">Продает сундуки с неизвестной экипировкой. Гарант Огромного сундука: ${pity}/100.</div>
+
+    <div class="class-grid">
+        <div class="class-card" style="border-color:#9ca3af; padding: 10px;" onclick="buyChest(1)">
+            <div class="class-title" style="color:#9ca3af; font-size:14px;">Сундучок</div>
+            <div class="class-desc" style="font-size:10px; text-align:center;">85% ОБЫЧ<br>14% НЕОБЫЧ<br>1% РЕДК</div>
+            <button class="action-btn" style="background:#475569; padding: 5px; width:100%; font-size:12px; margin-top:5px;">100 🪙</button>
+        </div>
+        <div class="class-card" style="border-color:#22c55e; padding: 10px;" onclick="buyChest(2)">
+            <div class="class-title" style="color:#22c55e; font-size:14px;">Сундук</div>
+            <div class="class-desc" style="font-size:10px; text-align:center;">60% ОБЫЧ | 20% НЕОБЫЧ<br>19% РЕДК | 1% ЭПИК</div>
+            <button class="action-btn" style="background:#15803d; padding: 5px; width:100%; font-size:12px; margin-top:5px;">300 🪙</button>
+        </div>
+        <div class="class-card" style="border-color:#3b82f6; padding: 10px;" onclick="buyChest(3)">
+            <div class="class-title" style="color:#3b82f6; font-size:14px;">Бол. сундук</div>
+            <div class="class-desc" style="font-size:10px; text-align:center;">40% ОБЫЧ | 30% НЕОБЫЧ<br>27% РЕДК | 3% ЭПИК</div>
+            <button class="action-btn" style="background:#1d4ed8; padding: 5px; width:100%; font-size:12px; margin-top:5px;">500 🪙</button>
+        </div>
+        <div class="class-card" style="border-color:#a855f7; padding: 10px; box-shadow: 0 0 10px rgba(168,85,247,0.4);" onclick="buyChest(4)">
+            <div class="class-title" style="color:#a855f7; font-size:14px;">Огр. сундук</div>
+            <div class="class-desc" style="font-size:10px; text-align:center;">30% ОБЫЧ | 30% НЕОБЫЧ<br>35% РЕДК | 5% ЭПИК</div>
+            <button class="action-btn" style="background:#6b21a8; padding: 5px; width:100%; font-size:12px; margin-top:5px;">1000 🪙</button>
+        </div>
+    </div>
+  `;
+  document.getElementById('shop-content').innerHTML = html;
+}
+
+// === БОЕВАЯ СИСТЕМА ===
 let player = {}; let bot = {}; let gameIsOver = false;
 let turnTimerId = null; let turnTimeLeft = 4000; 
 const TURN_DURATION = 4000;
@@ -264,7 +373,6 @@ function parsePerks(eq) {
 function initChar(classId, isBot, lp) {
   let eq = { head:null, body:null, arms:null, legs:null };
   if(isBot) {
-    // Гарантированный проход по каждому слоту 
     ['head', 'body', 'arms', 'legs'].forEach(slot => {
         let drop = rollBotItemForSlot(lp, slot); 
         if(drop) eq[slot] = drop;
@@ -558,7 +666,8 @@ function checkWinner() {
       
       let loot = rollLoot(gameData.lp);
       if(loot) {
-        if(gameData.inventory.length < 6) { 
+        // ИСПРАВЛЕНИЕ: Используем maxInventory вместо жесткого лимита 6
+        if(gameData.inventory.length < gameData.maxInventory) { 
           gameData.inventory.push(loot); 
           endMsg += `<br><br><span class="text-${loot.rarity}">🎁 Выпал предмет: ${loot.name}! Проверьте сумку.</span>`; 
         } else { 
@@ -601,7 +710,6 @@ function openCharModal(isPlayer) {
   document.getElementById('item-modal').style.display = 'flex';
 }
 
-// === НОВЫЕ ФУНКЦИИ ДЛЯ АРЕН ===
 function renderArenas() {
   let html = '<div style="margin-bottom:15px;"><h2>Список Арен</h2><span style="font-size:12px; color:#94a3b8;">Нажмите на арену, чтобы увидеть награды</span></div><div class="class-grid">'; 
   let prevLp = 0;
@@ -621,7 +729,6 @@ function renderArenas() {
 function openArenaModal(idx) {
   let a = ARENAS[idx];
   let prevLp = idx === 0 ? 0 : ARENAS[idx-1].maxLp + 1;
-  // Для Олимпа (maxLp = 99999) берем шансы как для 3500 LP
   let drops = getArenaDrops(a.maxLp === 99999 ? 3500 : a.maxLp); 
   
   document.getElementById('modal-title').innerText = `${a.icon} ${a.name}`;
