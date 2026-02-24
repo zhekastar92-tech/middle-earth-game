@@ -60,3 +60,33 @@ h1, h2, h3 { color: #fbbf24; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-top:
 .text-skill { color: #fbbf24; font-weight: bold;}
 .text-block { color: #94a3b8; }
 .text-info { color: #38bdf8; font-style: italic; font-size: 12px; display: block; margin-top: 4px;}
+ /* === НОВЫЕ СТИЛИ ДЛЯ РАНГОВ И АРЕН === */
+
+.profile-header {
+  background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 15px; margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: space-between; border: 1px solid #475569;
+}
+.profile-name { font-size: 18px; font-weight: bold; color: #fff; }
+.profile-rank { font-size: 14px; color: #fbbf24; }
+
+.rank-badge {
+  font-size: 12px; font-weight: bold; color: #cbd5e1; background: rgba(0,0,0,0.5);
+  padding: 4px 8px; border-radius: 6px; display: inline-block; margin-bottom: 10px;
+}
+
+/* Фоны Арен */
+.arena-wood { background: linear-gradient(to bottom, #1e293b, #0f172a); } /* Лагерь */
+.arena-bronze { background: linear-gradient(to bottom, #451a03, #1c1917); } /* Городская арена */
+.arena-silver { background: linear-gradient(to bottom, #1e1b4b, #0f172a); } /* Колизей */
+.arena-gold { background: linear-gradient(to bottom, #422006, #2e1065); } /* Небесный трон */
+
+/* Рамки персонажей по рангу */
+.border-wood { border: 2px solid #52525b; box-shadow: inset 0 0 10px rgba(82, 82, 91, 0.5); }
+.border-bronze { border: 2px solid #b45309; box-shadow: inset 0 0 10px rgba(180, 83, 9, 0.5); }
+.border-silver { border: 2px solid #94a3b8; box-shadow: inset 0 0 15px rgba(148, 163, 184, 0.5); }
+.border-gold { border: 2px solid #fbbf24; box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.6); }
+
+/* Анимация начисления LP */
+.lp-gain { color: #10b981; font-weight: bold; font-size: 16px; animation: popUp 1s ease-out forwards; }
+.lp-loss { color: #f43f5e; font-weight: bold; font-size: 16px; animation: popUp 1s ease-out forwards; }
+@keyframes popUp { 0% { opacity: 0; transform: translateY(10px); } 50% { opacity: 1; transform: translateY(-5px); } 100% { opacity: 1; transform: translateY(0); } }
