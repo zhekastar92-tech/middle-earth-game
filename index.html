@@ -5,91 +5,92 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Битва Средиземья</title>
 <script>document.write('<link rel="stylesheet" href="style.css?v=' + Date.now() + '">');</script>
-<script>document.write('<script src="script.js?v=' + Date.now() + '"><\\/script>');</script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
   <div class="nav-menu">
-    <button class="nav-tab active">⚔️ Бой</button>
-    <button class="nav-tab disabled">👤 Герой</button>
-    <button class="nav-tab disabled">🎒 Сумка</button>
+    <button class="nav-tab active" onclick="switchTab('tab-battle')">⚔️ Бой</button>
+    <button class="nav-tab" onclick="switchTab('tab-hero')">👤 Герой</button>
+    <button class="nav-tab" onclick="switchTab('tab-bag')">🎒 Сумка</button>
     <button class="nav-tab disabled">🏟️ Арены</button>
-    <button class="nav-tab disabled">🏆 Топ</button>
   </div>
 
-  <div id="main-screen">
-    <div class="profile-header" id="menu-profile">
-      </div>
-    <h2>Выберите класс</h2>
-    <div class="class-grid">
-      <div class="class-card" onclick="startGame('warrior')">
-        <div class="class-title">🗡️ Воин</div>
-        <div class="class-desc">
-          <b>На вылет:</b> 5 урона -> след. атака пробивает блок.<br>
-          <b>Берсерк:</b> При ХП ≤ 6 атака +2 урона.<br>
-          <b>Боевой раж:</b> При ХП < 10 лечит 1 ХП каждый ход.
+  <div id="tab-battle" class="tab-content active">
+    <div id="main-screen">
+      <div class="profile-header" id="menu-profile"></div>
+      <h2>Выберите класс</h2>
+      <div class="class-grid">
+        <div class="class-card" onclick="startGame('warrior')">
+          <div class="class-title">🗡️ Воин</div>
+          <div class="class-desc"><b>На вылет:</b> 5 урона -> пробой.<br><b>Берсерк:</b> ХП ≤ 6 -> атака +2.<br><b>Боевой раж:</b> ХП < 10 -> реген +1.</div>
         </div>
-      </div>
-      <div class="class-card" onclick="startGame('assassin')">
-        <div class="class-title">🔪 Убийца</div>
-        <div class="class-desc">
-          <b>Двойной удар:</b> 4 урона -> след. атака х2.<br>
-          <b>Инстинкт:</b> 1 раз за бой уклоняется при ХП ≤ 4.<br>
-          <b>Преследование:</b> 13 сумм. урона -> отравляет врага.
+        <div class="class-card" onclick="startGame('assassin')">
+          <div class="class-title">🔪 Убийца</div>
+          <div class="class-desc"><b>Двойной удар:</b> 4 урона -> х2.<br><b>Инстинкт:</b> ХП ≤ 4 -> 1 уворот.<br><b>Преследование:</b> 13 урона -> яд.</div>
         </div>
-      </div>
-      <div class="class-card" onclick="startGame('guardian')">
-        <div class="class-title">🛡️ Страж</div>
-        <div class="class-desc">
-          <b>Оплот:</b> 5 блока -> ход неуязвимости и атаки.<br>
-          <b>Контратака:</b> Идеальный блок наносит 1 урон врагу.<br>
-          <b>Возмездие:</b> Каждые 2 блока дают +1 к след. атаке.
+        <div class="class-card" onclick="startGame('guardian')">
+          <div class="class-title">🛡️ Страж</div>
+          <div class="class-desc"><b>Оплот:</b> 5 блока -> неуязвимость.<br><b>Контратака:</b> Идеал. блок -> 1 урон.<br><b>Возмездие:</b> 2 блока -> атака +1.</div>
         </div>
-      </div>
-      <div class="class-card" onclick="startGame('priest')">
-        <div class="class-title">✨ Жрец</div>
-        <div class="class-desc">
-          <b>Сила жизни:</b> 3 лечения -> лечит по 2 ХП 2 хода.<br>
-          <b>Молитва:</b> 1 раз за бой при ХП ≤ 8 лечит 6 ХП от удара.<br>
-          <b>Свет:</b> Любое лечение наносит такой же урон врагу.
+        <div class="class-card" onclick="startGame('priest')">
+          <div class="class-title">✨ Жрец</div>
+          <div class="class-desc"><b>Сила жизни:</b> 3 хила -> реген 2х2.<br><b>Молитва:</b> ХП ≤ 8 -> хил 6 (1 раз).<br><b>Свет:</b> Хил = урон врагу.</div>
         </div>
       </div>
     </div>
+
+    <div id="battle-screen" style="display:none;">
+      <div class="arena" id="battle-arena">
+        <div class="character" id="player-card">
+          <h2 class="char-name" id="ui-player-name">Вы</h2>
+          <div class="rank-badge" id="ui-player-rank">0 LP</div>
+          <div class="bar-container"><div class="bar-text" id="ui-player-hp-text">20/20</div><div class="hp-fill" id="ui-player-hp-fill"></div></div>
+          <div class="skills-panel" id="ui-player-skills"></div>
+        </div>
+        <div class="character" id="bot-card">
+          <h2 class="char-name" id="ui-bot-name">Орк</h2>
+          <div class="rank-badge" id="ui-bot-rank">0 LP</div>
+          <div class="bar-container"><div class="bar-text" id="ui-bot-hp-text">20/20</div><div class="hp-fill" id="ui-bot-hp-fill"></div></div>
+          <div class="skills-panel" id="ui-bot-skills"></div>
+        </div>
+      </div>
+      <div class="controls" id="controls">
+        <button class="action-btn btn-attack" id="btn-attack" onclick="playTurn('attack')">🗡️ Атака</button>
+        <button class="action-btn btn-defend" id="btn-defend" onclick="playTurn('defend')">🛡️ Защита</button>
+        <button class="action-btn btn-skill" id="btn-skill" onclick="playTurn('skill')">✨ Навык!</button>
+        <button class="action-btn btn-return" id="btn-return" onclick="returnToMenu()">В меню</button>
+      </div>
+      <div id="combat-log"></div>
+    </div>
   </div>
 
-  <div id="battle-screen">
-    <div class="arena" id="battle-arena">
-      <div class="character" id="player-card">
-        <h2 class="char-name" id="ui-player-name">Вы</h2>
-        <div class="rank-badge" id="ui-player-rank">0 LP</div>
-        <div class="bar-container">
-          <div class="bar-text" id="ui-player-hp-text">20/20</div>
-          <div class="hp-fill" id="ui-player-hp-fill"></div>
-        </div>
-        <div class="skills-panel" id="ui-player-skills"></div>
-      </div>
-      
-      <div class="character" id="bot-card">
-        <h2 class="char-name" id="ui-bot-name">Орк</h2>
-        <div class="rank-badge" id="ui-bot-rank">0 LP</div>
-        <div class="bar-container">
-          <div class="bar-text" id="ui-bot-hp-text">20/20</div>
-          <div class="hp-fill" id="ui-bot-hp-fill"></div>
-        </div>
-        <div class="skills-panel" id="ui-bot-skills"></div>
-      </div>
+  <div id="tab-hero" class="tab-content">
+    <h2>Экипировка</h2>
+    <div class="stats-panel" id="hero-stats">ХП: 20</div>
+    <div class="equip-grid">
+      <div class="equip-slot" id="eq-head" onclick="openItemModal('head', true)">🪖<br>Голова</div>
+      <div class="equip-slot" id="eq-body" onclick="openItemModal('body', true)">👕<br>Тело</div>
+      <div class="equip-slot" id="eq-arms" onclick="openItemModal('arms', true)">🧤<br>Руки</div>
+      <div class="equip-slot" id="eq-legs" onclick="openItemModal('legs', true)">👢<br>Ноги</div>
     </div>
-
-    <div class="controls" id="controls">
-      <button class="action-btn btn-attack" id="btn-attack" onclick="playTurn('attack')">🗡️ Атака</button>
-      <button class="action-btn btn-defend" id="btn-defend" onclick="playTurn('defend')">🛡️ Защита</button>
-      <button class="action-btn btn-skill" id="btn-skill" onclick="playTurn('skill')">✨ Применить навык!</button>
-      <button class="action-btn btn-return" id="btn-return" onclick="returnToMenu()">В меню</button>
-    </div>
-
-    <div id="combat-log"></div>
   </div>
 
-  <script src="script.js"></script>
+  <div id="tab-bag" class="tab-content">
+    <h2>Сумка (<span id="bag-count">0</span>/6)</h2>
+    <div class="imperial-count">Империалы: <span id="imperial-amount" style="color:#fbbf24">0</span> 🪙</div>
+    <div class="inventory-grid" id="inventory-grid">
+      </div>
+  </div>
+
+  <div id="item-modal" class="modal">
+    <div class="modal-content">
+      <h3 id="modal-title">Название</h3>
+      <div id="modal-desc" class="modal-desc">Описание</div>
+      <div class="modal-actions" id="modal-actions"></div>
+      <button class="action-btn" style="background:#475569; padding: 10px; margin-top: 10px;" onclick="closeModal()">Закрыть</button>
+    </div>
+  </div>
+
+  <script>document.write('<script src="script.js?v=' + Date.now() + '"><\\/script>');</script>
 </body>
-</html>
+        </html>
