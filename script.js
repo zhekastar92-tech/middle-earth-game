@@ -223,6 +223,7 @@ function initChar(classId, isBot, lp) {
     classId: classId, className: CLASSES[classId].name, hp: hpTotal, maxHp: hpTotal, lp: lp,
     stats: { dmgDealt: 0, dmgBlocked: 0, healed: 0 }, skillReady: false, hotTurnsLeft: 0,
     usedInstinct: false, usedPrayer: false, poisoned: false, pursuitDmg: 0, retBlocks: 0, retBonus: 0,
+    eq: eq, // <- НОВОЕ: Сохраняем физические предметы в память бойца
     eqP: parsePerks(eq) 
   };
 }
@@ -320,9 +321,20 @@ function playTurn(playerChoice) {
     logMsg += resolveCombat(bot, player, bAttack, (bIgnore ? 0 : pBlock), "Враг", REAL_PLAYER_NAME, bIgnore);
   }
 
-  if (player.hp < player.maxHp && player.eqP.healOnce > 0) { player.hp = Math.min(player.maxHp, player.hp + player.eqP.healOnce); logMsg += `<span class="text-heal">🪖 Шлем лечит вам ${player.eqP.healOnce} ХП.</span><br>`; player.eqP.healOnce = 0; }
-  if (bot.hp < bot.maxHp && bot.eqP.healOnce > 0) { bot.hp = Math.min(bot.maxHp, bot.hp + bot.eqP.healOnce); bot.eqP.healOnce = 0; }
-
+  // Экипировка: Хил при падении ХП (С умным расчетом дефицита)
+  if (player.hp < player.maxHp && player.eqP.healOnce > 0) { 
+    let deficit = player.maxHp - player.hp; // Считаем, сколько ХП не хватает до фулла
+    let healAmt = Math.min(deficit, player.eqP.healOnce); // Берем ровно столько, сколько нужно
+    player.hp += healAmt; 
+    player.eqP.healOnce -= healAmt; // Вычитаем только потраченное
+    logMsg += `<span class="text-heal">🪖 Шлем лечит вам ${healAmt} ХП (осталось заряда: ${player.eqP.healOnce}).</span><br>`; 
+  }
+  if (bot.hp < bot.maxHp && bot.eqP.healOnce > 0) { 
+    let deficit = bot.maxHp - bot.hp; 
+    let healAmt = Math.min(deficit, bot.eqP.healOnce); 
+    bot.hp += healAmt; 
+    bot.eqP.healOnce -= healAmt; 
+  }
   if (player.classId === 'warrior' && player.hp > 0 && player.hp < 10) { player.hp += 1; logMsg += `<span class="text-heal">🩸 Боевой раж: +1 ХП.</span><br>`; }
   if (bot.classId === 'warrior' && bot.hp > 0 && bot.hp < 10) { bot.hp += 1; }
 
@@ -468,6 +480,36 @@ function checkWinner() {
     }
     saveData(); logToScreen(endMsg);
   }
+}
+
+// ОСМОТР ПЕРСОНАЖЕЙ В БОЮ
+function openCharModal(isPlayer) {
+  if (!player.classId || !bot.classId) return; // Защита от клика до старта боя
+  let c = isPlayer ? player : bot;
+  
+  document.getElementById('modal-title').innerText = isPlayer ? "Осмотр: Вы" : "Осмотр: Враг";
+  document.getElementById('modal-title').className = "text-skill";
+  
+  let desc = `<b>Класс:</b> ${c.className}<br>`;
+  desc += `<b>ХП:</b> ${c.hp} / ${c.maxHp}<br><hr style="border-color:#475569; margin:10px 0;">`;
+  desc += `<b>Экипировка:</b><br><br>`;
+  
+  let hasItems = false;
+  ['head', 'body', 'arms', 'legs'].forEach(s => {
+    let item = c.eq[s];
+    if (item) {
+      hasItems = true;
+      desc += `<b class="text-${item.rarity}">${item.name}</b> (+${item.hp} ХП)<br>`;
+      if (item.perk) desc += `<span style="font-size:10px; color:#9ca3af">🔸 ${item.perk.desc}</span><br>`;
+      if (item.unique) desc += `<span style="font-size:10px; color:#fbbf24">🔸 ${item.unique.desc}</span><br>`;
+      desc += `<br>`;
+    }
+  });
+  if (!hasItems) desc += `<span style="color:#9ca3af">Нет предметов</span>`;
+  
+  document.getElementById('modal-desc').innerHTML = desc;
+  document.getElementById('modal-actions').innerHTML = ''; // Прячем кнопки "Надеть/Продать"
+  document.getElementById('item-modal').style.display = 'flex';
 }
 
 updateMenuProfile();
