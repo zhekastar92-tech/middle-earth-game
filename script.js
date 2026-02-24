@@ -3,17 +3,33 @@ const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : 
 if (tg && tg.expand) tg.expand();
 const REAL_PLAYER_NAME = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.first_name : "Вы";
 
-// БАЗА ДАННЫХ
-let gameData = { lp: 0, imperials: 0, inventory: [], equip: { head: null, body: null, arms: null, legs: null }, maxInventory: 6, hugeChestPity: 0 };
+// БАЗА ДАННЫХ И МИГРАЦИЯ
+let gameData = { 
+  lp: 0, imperials: 0, inventory: [], maxInventory: 6, hugeChestPity: 0, currentClass: 'warrior',
+  equip: { 
+    warrior: { head: null, body: null, arms: null, legs: null },
+    assassin: { head: null, body: null, arms: null, legs: null },
+    guardian: { head: null, body: null, arms: null, legs: null },
+    priest: { head: null, body: null, arms: null, legs: null }
+  }
+};
+
 try {
   let saved = JSON.parse(localStorage.getItem('middleEarthData'));
   if (saved && typeof saved === 'object') {
     gameData.lp = saved.lp || 0;
     gameData.imperials = saved.imperials || 0;
     gameData.inventory = saved.inventory || [];
-    gameData.equip = saved.equip || { head: null, body: null, arms: null, legs: null };
-    gameData.maxInventory = saved.maxInventory || 6; // Загрузка расширенной сумки
-    gameData.hugeChestPity = saved.hugeChestPity || 0; // Счетчик гаранта
+    gameData.maxInventory = saved.maxInventory || 6;
+    gameData.hugeChestPity = saved.hugeChestPity || 0;
+    gameData.currentClass = saved.currentClass || 'warrior';
+    
+    // Миграция старой экипировки (если у игрока была общая сумка, отдаем ее Воину)
+    if (saved.equip && saved.equip.warrior) {
+      gameData.equip = saved.equip;
+    } else if (saved.equip) {
+      gameData.equip.warrior = saved.equip;
+    }
   }
 } catch (e) {}
 
@@ -82,6 +98,8 @@ function switchTab(btn, tabId) {
     let fallbackBtn = document.querySelector(`[onclick="switchTab(this, '${tabId}')"]`);
     if (fallbackBtn) fallbackBtn.classList.add('active');
   }
+  
+  if(tabId === 'tab-battle') renderMainMenu();
   if(tabId === 'tab-hero') updateHeroTab();
   if(tabId === 'tab-bag') updateBagTab();
   if(tabId === 'tab-arenas') renderArenas();
@@ -93,6 +111,59 @@ function updateMenuProfile() {
   let nameClass = rank.textClass ? ` class="profile-name ${rank.textClass}"` : ` class="profile-name"`;
   document.getElementById("menu-profile").innerHTML = `<div${nameClass}>👤 ${REAL_PLAYER_NAME}</div><div class="profile-rank">${rank.icon} ${rank.name} | ${gameData.lp} LP</div>`;
 }
+
+// === НОВАЯ ЛОГИКА ГЛАВНОГО ЭКРАНА И КЛАССОВ ===
+function renderMainMenu() {
+  updateMenuProfile();
+  let arena = getArena(gameData.lp);
+  
+  let arenaHtml = `
+    <div style="font-size: 40px; margin-bottom: 10px;">${arena.icon}</div>
+    <div class="class-title" style="color: #fff; text-shadow: 0 0 5px rgba(0,0,0,0.8); font-size: 22px;">${arena.name}</div>
+    <button class="btn-fight-huge" onclick="startGame()">⚔️ В БОЙ</button>
+  `;
+  let arenaCard = document.getElementById("menu-arena-display");
+  arenaCard.className = "class-card " + arena.arenaClass;
+  arenaCard.innerHTML = arenaHtml;
+
+  let cls = CLASSES[gameData.currentClass];
+  let classHtml = `
+    <div style="text-align:left;">
+      <div class="class-title" style="margin:0; font-size: 18px;">${cls.name}</div>
+      <div style="font-size:11px; color:#cbd5e1; margin-top:4px;">Нажмите, чтобы сменить</div>
+    </div>
+    <div style="font-size:24px;">🔄</div>
+  `;
+  document.getElementById("menu-class-display").innerHTML = classHtml;
+}
+
+function openClassModal() {
+  let html = '';
+  Object.keys(CLASSES).forEach(key => {
+     let c = CLASSES[key];
+     let isSelected = gameData.currentClass === key;
+     html += `
+       <div class="class-card ${isSelected ? 'border-emerald' : ''}" style="margin-bottom:10px; border-width:2px; text-align:left; background: rgba(30, 41, 59, 1);" onclick="selectClass('${key}')">
+          <div class="class-title" style="display:flex; justify-content:space-between;">
+             ${c.name} ${isSelected ? '✅' : ''}
+          </div>
+          <div class="class-desc" style="font-size:10px;">${c.p1} | ${c.p2}</div>
+       </div>
+     `;
+  });
+  document.getElementById("class-modal-list").innerHTML = html;
+  document.getElementById("class-modal").style.display = "flex";
+}
+
+function selectClass(key) {
+   gameData.currentClass = key;
+   saveData();
+   document.getElementById("class-modal").style.display = "none";
+   renderMainMenu();
+}
+
+function closeClassModal() { document.getElementById("class-modal").style.display = "none"; }
+
 
 function rollLoot(lp) {
   let drops = getArenaDrops(lp); 
@@ -128,7 +199,6 @@ function rollBotItemForSlot(lp, slot) {
   return generateItem(rarity, slot); 
 }
 
-// НОВОЕ: Передаем forceUnique из сундука
 function generateItem(rarity, forceSlot = null, forceUnique = false) {
   const slots = ['head', 'body', 'arms', 'legs'];
   const slot = forceSlot ? forceSlot : slots[Math.floor(Math.random() * slots.length)];
@@ -159,24 +229,26 @@ function generateUnique(slot) {
   if (slot === 'legs') return { type: 'dodge', val: 0.15, desc: `[УНИК] 15% шанс избежать атаки.` };
 }
 
-// === МАГАЗИН И ИНВЕНТАРЬ ===
+// === ИНВЕНТАРЬ И ПРИВЯЗКА ЭПИКОВ ===
 let selectedItem = null; let isEquipped = false;
 function updateHeroTab() {
   let totalHp = 20;
+  let currentEq = gameData.equip[gameData.currentClass];
+  
   ['head', 'body', 'arms', 'legs'].forEach(slot => {
     let el = document.getElementById(`eq-${slot}`);
-    let item = gameData.equip[slot];
+    let item = currentEq[slot];
     if (item) {
       totalHp += item.hp;
       el.className = `equip-slot rarity-${item.rarity} filled`;
       el.innerHTML = `<b>${item.name}</b><br>+${item.hp} ХП`;
+      if (item.rarity === 'epic') el.innerHTML += `<br><span style="color:#ef4444; font-size:9px;">Привязано</span>`;
     } else {
       el.className = `equip-slot`; el.innerHTML = `${getSlotIcon(slot)}<br>${SLOT_NAMES[slot]}`;
     }
   });
   document.getElementById('hero-stats').innerText = `Максимальное ХП: ${totalHp}`;
-}
-
+                  }
 function updateBagTab() {
   document.getElementById('bag-count').innerText = gameData.inventory.length;
   document.getElementById('bag-max').innerText = gameData.maxInventory;
@@ -187,7 +259,6 @@ function updateBagTab() {
   
   let grid = document.getElementById('inventory-grid');
   grid.innerHTML = '';
-  // Отрисовываем ячейки в зависимости от максимального размера сумки
   for(let i=0; i < gameData.maxInventory; i++) {
     let item = gameData.inventory[i];
     if (item) { grid.innerHTML += `<div class="inv-slot rarity-${item.rarity} filled" onclick="openItemModalById('${item.id}', false)"><b>${item.name}</b><br>+${item.hp} ХП</div>`; } 
@@ -198,7 +269,8 @@ function updateBagTab() {
 function getSlotIcon(slot) { return { head: "🪖", body: "👕", arms: "🧤", legs: "👢" }[slot]; }
 
 function openItemModalById(id, equipped) {
-  let item = equipped ? Object.values(gameData.equip).find(i => i && String(i.id) === String(id)) : gameData.inventory.find(i => i && String(i.id) === String(id));
+  let currentEq = gameData.equip[gameData.currentClass];
+  let item = equipped ? Object.values(currentEq).find(i => i && String(i.id) === String(id)) : gameData.inventory.find(i => i && String(i.id) === String(id));
   if (!item) return;
   selectedItem = item; isEquipped = equipped;
   
@@ -207,42 +279,78 @@ function openItemModalById(id, equipped) {
   let desc = `<b>Слот:</b> ${SLOT_NAMES[item.slot]}<br><b>Бонус:</b> +${item.hp} Макс ХП<br>`;
   if (item.perk) desc += `<br>🔸 ${item.perk.desc}`;
   if (item.unique) desc += `<br><b style="color:#fbbf24">${item.unique.desc}</b>`;
-  if (!equipped) desc += `<br><br><i>Цена продажи: ${SELL_PRICES[item.rarity]} 🪙</i>`;
+  
+  if (equipped && item.rarity === 'epic') {
+     desc += `<br><br><span style="color:#ef4444; font-weight:bold;">🔒 Привязано к герою</span><br><i>Эту вещь нельзя снять, только уничтожить (продать).</i>`;
+  }
+  
+  desc += `<br><br><i>Цена продажи: ${SELL_PRICES[item.rarity]} 🪙</i>`;
   document.getElementById('modal-desc').innerHTML = desc;
   
   let acts = document.getElementById('modal-actions');
-  if (equipped) { acts.innerHTML = `<button class="action-btn" style="background:#f59e0b" onclick="unequipItem()">Снять</button>`; } 
-  else {
+  
+  // МЕХАНИКА SOULBOUND (Привязки)
+  if (equipped) {
+    if (item.rarity === 'epic') {
+        acts.innerHTML = `<button class="action-btn" style="background:#ef4444" onclick="sellEquippedItem()">Продать</button>`;
+    } else {
+        acts.innerHTML = `<button class="action-btn" style="background:#f59e0b" onclick="unequipItem()">Снять</button>`;
+    }
+  } else {
     acts.innerHTML = `<button class="action-btn" style="background:#22c55e" onclick="equipItem()">Надеть</button>
                       <button class="action-btn" style="background:#ef4444" onclick="sellItem()">Продать</button>`;
   }
   document.getElementById('item-modal').style.display = 'flex';
 }
 
-function openItemModal(slot, equipped) { if (equipped && gameData.equip[slot]) openItemModalById(gameData.equip[slot].id, true); }
+function openItemModal(slot, equipped) { 
+  let currentEq = gameData.equip[gameData.currentClass];
+  if (equipped && currentEq[slot]) openItemModalById(currentEq[slot].id, true); 
+}
 function closeModal() { document.getElementById('item-modal').style.display = 'none'; }
 
 function equipItem() {
-  if(gameData.inventory.length >= gameData.maxInventory && gameData.equip[selectedItem.slot]) { alert("Сумка полна! Сначала освободите место."); return; }
-  let oldItem = gameData.equip[selectedItem.slot];
+  let currentEq = gameData.equip[gameData.currentClass];
+  let oldItem = currentEq[selectedItem.slot];
+  
+  // Защита: нельзя надеть вещь, если слот занят Эпиком (его надо сначала продать)
+  if (oldItem && oldItem.rarity === 'epic') {
+      alert("Слот занят привязанной эпической вещью! Сначала продайте её.");
+      return;
+  }
+  
+  if(gameData.inventory.length >= gameData.maxInventory && oldItem) { alert("Сумка полна! Сначала освободите место."); return; }
+  
   gameData.inventory = gameData.inventory.filter(i => i.id !== selectedItem.id);
-  gameData.equip[selectedItem.slot] = selectedItem;
+  currentEq[selectedItem.slot] = selectedItem;
   if(oldItem) gameData.inventory.push(oldItem);
   saveData(); closeModal(); updateBagTab(); updateHeroTab();
 }
+
 function unequipItem() {
   if(gameData.inventory.length >= gameData.maxInventory) { alert("Сумка полна!"); return; }
-  gameData.equip[selectedItem.slot] = null;
+  let currentEq = gameData.equip[gameData.currentClass];
+  currentEq[selectedItem.slot] = null;
   gameData.inventory.push(selectedItem);
   saveData(); closeModal(); updateBagTab(); updateHeroTab();
 }
+
 function sellItem() {
   gameData.imperials += SELL_PRICES[selectedItem.rarity];
   gameData.inventory = gameData.inventory.filter(i => i.id !== selectedItem.id);
   saveData(); closeModal(); updateBagTab(); if(document.getElementById('tab-shop').classList.contains('active')) renderShop();
 }
 
-// ЛОГИКА ТОРГОВЦЕВ
+// Продажа Эпиков прямо с персонажа
+function sellEquippedItem() {
+  if(confirm("Вы уверены? Вещь будет уничтожена и вы получите " + SELL_PRICES[selectedItem.rarity] + " 🪙.")) {
+      gameData.imperials += SELL_PRICES[selectedItem.rarity];
+      gameData.equip[gameData.currentClass][selectedItem.slot] = null;
+      saveData(); closeModal(); updateHeroTab(); updateBagTab(); if(document.getElementById('tab-shop').classList.contains('active')) renderShop();
+  }
+}
+
+// === МАГАЗИН ===
 function getNextSlotCost() {
   let m = gameData.maxInventory;
   if (m >= 18) return null;
@@ -262,45 +370,25 @@ function buyBagSlots() {
 
 function buyChest(type) {
   if (gameData.inventory.length >= gameData.maxInventory) { alert("Сумка полна! Продайте лишние вещи."); return; }
-  
   let cost = [0, 100, 300, 500, 1000][type];
   if (gameData.imperials < cost) { alert("Недостаточно Империалов!"); return; }
 
   gameData.imperials -= cost;
-  let rarity = 'common';
-  let forceUnique = false;
-  let r = Math.random();
+  let rarity = 'common'; let forceUnique = false; let r = Math.random();
 
-  if (type === 1) { // Серый
-      if (r < 0.85) rarity = 'common';
-      else if (r < 0.99) rarity = 'uncommon';
-      else rarity = 'rare';
-  } else if (type === 2) { // Зеленый
-      if (r < 0.60) rarity = 'common';
-      else if (r < 0.80) rarity = 'uncommon';
-      else if (r < 0.99) rarity = 'rare';
-      else rarity = 'epic';
-  } else if (type === 3) { // Синий
-      if (r < 0.40) rarity = 'common';
-      else if (r < 0.70) rarity = 'uncommon';
-      else if (r < 0.97) rarity = 'rare';
-      else rarity = 'epic';
-  } else if (type === 4) { // Фиолетовый
+  if (type === 1) { if (r < 0.85) rarity = 'common'; else if (r < 0.99) rarity = 'uncommon'; else rarity = 'rare'; } 
+  else if (type === 2) { if (r < 0.60) rarity = 'common'; else if (r < 0.80) rarity = 'uncommon'; else if (r < 0.99) rarity = 'rare'; else rarity = 'epic'; } 
+  else if (type === 3) { if (r < 0.40) rarity = 'common'; else if (r < 0.70) rarity = 'uncommon'; else if (r < 0.97) rarity = 'rare'; else rarity = 'epic'; } 
+  else if (type === 4) { 
       gameData.hugeChestPity += 1;
-      if (gameData.hugeChestPity > 100) {
-          rarity = 'epic'; forceUnique = true; gameData.hugeChestPity = 0;
-      } else {
-          if (r < 0.30) rarity = 'common';
-          else if (r < 0.60) rarity = 'uncommon';
-          else if (r < 0.95) rarity = 'rare';
-          else rarity = 'epic';
-      }
+      if (gameData.hugeChestPity > 100) { rarity = 'epic'; forceUnique = true; gameData.hugeChestPity = 0; } 
+      else { if (r < 0.30) rarity = 'common'; else if (r < 0.60) rarity = 'uncommon'; else if (r < 0.95) rarity = 'rare'; else rarity = 'epic'; }
   }
 
   let item = generateItem(rarity, null, forceUnique);
   gameData.inventory.push(item);
   saveData(); updateBagTab(); renderShop();
-  openItemModalById(item.id, false); // Сразу показываем лут!
+  openItemModalById(item.id, false); 
 }
 
 function renderShop() {
@@ -316,7 +404,7 @@ function renderShop() {
     </div>
 
     <h3 style="margin-top: 20px; color:#f43f5e">🎲 Азартный Бак</h3>
-    <div class="class-desc" style="margin-bottom:10px;">Продает сундуки с неизвестной экипировкой. Гарант Огромного сундука: ${pity}/100.</div>
+    <div class="class-desc" style="margin-bottom:10px;">Продает сундуки. Гарант Огромного сундука: ${pity}/100.</div>
 
     <div class="class-grid">
         <div class="class-card" style="border-color:#9ca3af; padding: 10px;" onclick="buyChest(1)">
@@ -344,7 +432,7 @@ function renderShop() {
   document.getElementById('shop-content').innerHTML = html;
 }
 
-// === БОЕВАЯ СИСТЕМА ===
+// === БОЙ ===
 let player = {}; let bot = {}; let gameIsOver = false;
 let turnTimerId = null; let turnTimeLeft = 4000; 
 const TURN_DURATION = 4000;
@@ -373,11 +461,8 @@ function parsePerks(eq) {
 function initChar(classId, isBot, lp) {
   let eq = { head:null, body:null, arms:null, legs:null };
   if(isBot) {
-    ['head', 'body', 'arms', 'legs'].forEach(slot => {
-        let drop = rollBotItemForSlot(lp, slot); 
-        if(drop) eq[slot] = drop;
-    });
-  } else { eq = gameData.equip; }
+    ['head', 'body', 'arms', 'legs'].forEach(slot => { let drop = rollBotItemForSlot(lp, slot); if(drop) eq[slot] = drop; });
+  } else { eq = gameData.equip[classId]; } // БЕРЕМ ЭКИПИРОВКУ ВЫБРАННОГО КЛАССА
   
   let hpTotal = 20 + getEquipHp(eq);
   return {
@@ -420,8 +505,9 @@ function registerAction(action) {
   });
 }
 
-function startGame(selectedClassId) {
-  player = initChar(selectedClassId, false, gameData.lp);
+// ИСПРАВЛЕНИЕ: startGame теперь берет текущий класс из памяти
+function startGame() {
+  player = initChar(gameData.currentClass, false, gameData.lp);
   const keys = Object.keys(CLASSES);
   let botLp = Math.max(0, gameData.lp + Math.floor(Math.random() * 41) - 20);
   bot = initChar(keys[Math.floor(Math.random() * keys.length)], true, botLp);
@@ -445,7 +531,7 @@ function startGame(selectedClassId) {
 }
 
 function returnToMenu() { 
-  updateMenuProfile(); 
+  renderMainMenu(); 
   document.getElementById("main-screen").style.display = "block"; 
   document.getElementById("battle-screen").style.display = "none"; 
 }
@@ -666,7 +752,6 @@ function checkWinner() {
       
       let loot = rollLoot(gameData.lp);
       if(loot) {
-        // ИСПРАВЛЕНИЕ: Используем maxInventory вместо жесткого лимита 6
         if(gameData.inventory.length < gameData.maxInventory) { 
           gameData.inventory.push(loot); 
           endMsg += `<br><br><span class="text-${loot.rarity}">🎁 Выпал предмет: ${loot.name}! Проверьте сумку.</span>`; 
@@ -751,4 +836,5 @@ function openArenaModal(idx) {
   document.getElementById('item-modal').style.display = 'flex';
 }
 
-updateMenuProfile();
+// Запуск начальной отрисовки
+renderMainMenu();
