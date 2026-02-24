@@ -19,25 +19,13 @@
   <div id="tab-battle" class="tab-content active">
     <div id="main-screen">
       <div class="profile-header" id="menu-profile"></div>
-      <h2>Выберите класс</h2>
-      <div class="class-grid">
-        <div class="class-card" onclick="startGame('warrior')">
-          <div class="class-title">🗡️ Воин</div>
-          <div class="class-desc"><b>На вылет:</b> 5 урона -> пробой.<br><b>Берсерк:</b> ХП ≤ 6 -> атака +2.<br><b>Боевой раж:</b> ХП ≤ 6 -> реген +1.</div>
-        </div>
-        <div class="class-card" onclick="startGame('assassin')">
-          <div class="class-title">🔪 Убийца</div>
-          <div class="class-desc"><b>Двойной удар:</b> 4 урона -> х2.<br><b>Инстинкт:</b> ХП ≤ 4 -> 1 уворот.<br><b>Преследование:</b> 13 урона -> яд.</div>
-        </div>
-        <div class="class-card" onclick="startGame('guardian')">
-          <div class="class-title">🛡️ Страж</div>
-          <div class="class-desc"><b>Оплот:</b> 5 блока -> неуязвимость.<br><b>Контратака:</b> Идеал. блок -> 1 урон.<br><b>Возмездие:</b> 2 блока -> атака +1.</div>
-        </div>
-        <div class="class-card" onclick="startGame('priest')">
-          <div class="class-title">✨ Жрец</div>
-          <div class="class-desc"><b>Сила жизни:</b> 3 хила -> реген 2х2.<br><b>Молитва:</b> ХП ≤ 8 -> хил 6 (1 раз).<br><b>Свет:</b> Хил = урон врагу.</div>
-        </div>
-      </div>
+      
+      <div id="menu-arena-display" class="class-card" style="padding: 30px 15px; margin-bottom: 20px; border-width: 3px;">
+         </div>
+
+      <h3 style="text-align:left; font-size: 14px; margin-bottom:10px; color:#94a3b8;">Ваш герой:</h3>
+      <div id="menu-class-display" class="class-card" style="display:flex; justify-content:space-between; align-items:center;" onclick="openClassModal()">
+         </div>
     </div>
 
     <div id="battle-screen" style="display:none;">
@@ -88,14 +76,12 @@
     <div class="inventory-grid" id="inventory-grid"></div>
   </div>
 
-  <div id="tab-arenas" class="tab-content">
-    </div>
+  <div id="tab-arenas" class="tab-content"></div>
 
   <div id="tab-shop" class="tab-content">
     <h2>Торговый квартал</h2>
     <div class="imperial-count">Ваш баланс: <span id="shop-imperial-amount" style="color:#fbbf24">0</span> 🪙</div>
-    <div id="shop-content">
-      </div>
+    <div id="shop-content"></div>
   </div>
 
   <div id="item-modal" class="modal">
@@ -103,10 +89,19 @@
       <h3 id="modal-title">Название</h3>
       <div id="modal-desc" class="modal-desc">Описание</div>
       <div class="modal-actions" id="modal-actions"></div>
-      <button class="action-btn" style="background:#475569; padding: 10px; margin-top: 10px;" onclick="closeModal()">Закрыть</button>
+      <button class="action-btn" style="background:#475569; padding: 10px; margin-top: 10px; width: 100%;" onclick="closeModal()">Закрыть</button>
+    </div>
+  </div>
+
+  <div id="class-modal" class="modal">
+    <div class="modal-content">
+      <h3 class="text-skill">Смена героя</h3>
+      <div class="modal-desc" style="max-height: 60vh; overflow-y: auto; background: transparent; padding: 0;" id="class-modal-list">
+      </div>
+      <button class="action-btn" style="background:#475569; padding: 10px; margin-top: 10px; width: 100%;" onclick="closeClassModal()">Закрыть</button>
     </div>
   </div>
 
   <script src="script.js?v=777"></script>
 </body>
-  </html>
+</html>
