@@ -269,6 +269,7 @@ function startTurnTimer() {
   queuedPlayerAction = 'skip';
   isTurnActive = true;
   
+  // Включаем кнопки
   document.querySelectorAll('.controls .action-btn').forEach(btn => {
     if (btn.id !== 'btn-return') {
       btn.style.opacity = '1';
@@ -277,26 +278,32 @@ function startTurnTimer() {
   });
   updateScreen();
 
+  // Показываем контейнер таймера
   document.getElementById("turn-timer-container").style.display = "block";
-  let fillEl = document.getElementById("turn-timer-fill");
+  let textEl = document.getElementById("turn-timer-text");
   
   clearInterval(turnTimerId);
   turnTimerId = setInterval(() => {
     turnTimeLeft -= 100;
-    let pct = (turnTimeLeft / TURN_DURATION) * 100;
-    fillEl.style.width = `${pct}%`;
     
-    if (turnTimeLeft <= 1000) fillEl.classList.add('timer-urgent');
-    else fillEl.classList.remove('timer-urgent');
+    // НЮАНС: toFixed(1) оставляет одну цифру после запятой. Игрок будет видеть 3.9, 3.8 и т.д.
+    textEl.innerText = (turnTimeLeft / 1000).toFixed(1);
+    
+    // Меняем цвет цифр на красный на последней секунде для нагнетания обстановки
+    if (turnTimeLeft <= 1000) {
+      textEl.style.color = '#ef4444';
+    } else {
+      textEl.style.color = '#10b981';
+    }
 
     if (turnTimeLeft <= 0) {
       clearInterval(turnTimerId);
       isTurnActive = false;
-      fillEl.style.width = `0%`;
+      textEl.innerText = "0.0";
       playTurn(queuedPlayerAction);
     }
   }, 100);
-}
+    }
 
 function registerAction(action) {
   if (!isTurnActive || queuedPlayerAction !== 'skip') return;
