@@ -1,129 +1,289 @@
-// Инициализация Telegram API
-const tg = window.Telegram.WebApp;
-tg.expand(); // Разворачиваем игру на весь экран
-const REAL_PLAYER_NAME = tg.initDataUnsafe?.user?.first_name || "Вы";
+const tg = window.Telegram?.WebApp;
+if(tg) tg.expand();
+const REAL_PLAYER_NAME = tg?.initDataUnsafe?.user?.first_name || "Вы";
 
-// Система рангов и арен
+// БАЗА ДАННЫХ СОХРАНЕНИЯ (JSON)
+let gameData = JSON.parse(localStorage.getItem('middleEarthData')) || {
+  lp: 0, imperials: 0, inventory: [], 
+  equip: { head: null, body: null, arms: null, legs: null }
+};
+function saveData() { localStorage.setItem('middleEarthData', JSON.stringify(gameData)); }
+
 const RANKS = [
-  { name: "Новичок", icon: "🪨", maxLp: 99, arenaClass: "arena-wood", borderClass: "border-wood" },
-  { name: "Боец", icon: "🥉", maxLp: 299, arenaClass: "arena-bronze", borderClass: "border-bronze" },
-  { name: "Гладиатор", icon: "🥈", maxLp: 599, arenaClass: "arena-silver", borderClass: "border-silver" },
-  { name: "Чемпион", icon: "🥇", maxLp: 9999, arenaClass: "arena-gold", borderClass: "border-gold" }
+  { name: "Новичок", icon: "🪨", maxLp: 300, arenaClass: "arena-wood", borderClass: "border-wood", drops: { common: 0.1, uncommon: 0.005, rare: 0, epic: 0 } },
+  { name: "Боец", icon: "🥉", maxLp: 600, arenaClass: "arena-bronze", borderClass: "border-bronze", drops: { common: 0.2, uncommon: 0.01, rare: 0, epic: 0 } },
+  { name: "Гладиатор", icon: "🥈", maxLp: 1000, arenaClass: "arena-silver", borderClass: "border-silver", drops: { common: 0.5, uncommon: 0.05, rare: 0.005, epic: 0 } },
+  { name: "Чемпион", icon: "🥇", maxLp: 1500, arenaClass: "arena-gold", borderClass: "border-gold", drops: { common: 0, uncommon: 0.2, rare: 0.02, epic: 0.004 } },
+  { name: "Мастер", icon: "💎", maxLp: 9999, arenaClass: "arena-gold", borderClass: "border-gold", drops: { common: 0, uncommon: 0, rare: 0.1, epic: 0.01 } }
 ];
-
-// Получение LP из памяти телефона (или 0, если первый вход)
-let playerLp = parseInt(localStorage.getItem('middleEarthLp')) || 0;
-
-function getRank(lp) {
-  return RANKS.find(r => lp <= r.maxLp) || RANKS[RANKS.length - 1];
-}
+function getRank(lp) { return RANKS.find(r => lp <= r.maxLp) || RANKS[RANKS.length - 1]; }
 
 const CLASSES = {
-  warrior: { name: "Воин", activeName: "На вылет", reqType: "dmgDealt", reqAmt: 5, activeMsg: "Пробой брони активирован!", p1: "Берсерк", p2: "Боевой раж" },
-  assassin: { name: "Убийца", activeName: "Двойной удар", reqType: "dmgDealt", reqAmt: 4, activeMsg: "Двойной урон готов!", p1: "Инстинкт выживания", p2: "Преследование" },
-  guardian: { name: "Страж", activeName: "Оплот", reqType: "dmgBlocked", reqAmt: 5, activeMsg: "Абсолютный блок и контратака!", p1: "Контратака", p2: "Возмездие" },
-  priest: { name: "Жрец", activeName: "Сила жизни", reqType: "healed", reqAmt: 3, activeMsg: "Благословение исцеления наложено!", p1: "Молитва", p2: "Обжигающий свет" }
+  warrior: { name: "Воин", activeName: "На вылет", reqType: "dmgDealt", reqAmt: 5, p1: "Берсерк", p2: "Боевой раж" },
+  assassin: { name: "Убийца", activeName: "Двойной удар", reqType: "dmgDealt", reqAmt: 4, p1: "Инстинкт выживания", p2: "Преследование" },
+  guardian: { name: "Страж", activeName: "Оплот", reqType: "dmgBlocked", reqAmt: 5, p1: "Контратака", p2: "Возмездие" },
+  priest: { name: "Жрец", activeName: "Сила жизни", reqType: "healed", reqAmt: 3, p1: "Молитва", p2: "Обжигающий свет" }
 };
 
+const SLOT_NAMES = { head: "Шлем", body: "Броня", arms: "Перчатки", legs: "Сапоги" };
+const RARITY_NAMES = { common: "Обычный", uncommon: "Необычный", rare: "Редкий", epic: "Эпический" };
+const SELL_PRICES = { common: 10, uncommon: 100, rare: 500, epic: 1000 };
+
+// НАВИГАЦИЯ
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if(tabId === 'tab-hero') updateHeroTab();
+  if(tabId === 'tab-bag') updateBagTab();
+}
+
+function updateMenuProfile() {
+  let rank = getRank(gameData.lp);
+  document.getElementById("menu-profile").innerHTML = `<div class="profile-name">👤 ${REAL_PLAYER_NAME}</div><div class="profile-rank">${rank.icon} ${rank.name} | ${gameData.lp} LP</div>`;
+}
+
+// ГЕНЕРАТОР ПРЕДМЕТОВ
+function rollLoot(lp) {
+  let rank = getRank(lp);
+  let roll = Math.random();
+  if (roll < rank.drops.epic) return generateItem('epic');
+  if (roll < rank.drops.epic + rank.drops.rare) return generateItem('rare');
+  if (roll < rank.drops.epic + rank.drops.rare + rank.drops.uncommon) return generateItem('uncommon');
+  if (roll < rank.drops.epic + rank.drops.rare + rank.drops.uncommon + rank.drops.common) return generateItem('common');
+  return null;
+}
+
+function generateItem(rarity) {
+  const slots = ['head', 'body', 'arms', 'legs'];
+  const slot = slots[Math.floor(Math.random() * slots.length)];
+  let item = { id: Date.now() + Math.floor(Math.random()*1000), rarity, slot, hp: 0, perk: null, unique: null };
+  
+  if (rarity === 'common') {
+    item.hp = Math.floor(Math.random() * 2) + 1; // 1-2
+  } else if (rarity === 'uncommon') {
+    item.hp = Math.floor(Math.random() * 2) + 1; // 1-2
+    if (Math.random() < 0.1) item.perk = generatePerk(slot, 1, 1, 1);
+  } else if (rarity === 'rare') {
+    item.hp = Math.floor(Math.random() * 2) + 2; // 2-3
+    if (Math.random() < 0.1) item.perk = generatePerk(slot, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1);
+  } else if (rarity === 'epic') {
+    item.hp = Math.floor(Math.random() * 3) + 3; // 3-5
+    item.perk = generatePerk(slot, Math.floor(Math.random()*3)+2, Math.floor(Math.random()*3)+2, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+2);
+    if (Math.random() < 0.02) item.unique = generateUnique(slot);
+  }
+  item.name = `${RARITY_NAMES[rarity]} ${SLOT_NAMES[slot]}`;
+  return item;
+}
+
+function generatePerk(slot, hVal, bVal, aVal, aCharges=1) {
+  if (slot === 'head') return { type: 'heal_once', val: hVal, desc: `Лечит ${hVal} ХП при падении здоровья.` };
+  if (slot === 'body') return { type: 'block_pierce', val: bVal, desc: `Блокирует ${bVal} пробитого урона (1 раз).` };
+  if (slot === 'arms') return { type: 'first_strike', val: aVal, charges: aCharges, desc: `Урон +${aVal} на первые ${aCharges} атак.` };
+  return null; // Ноги без базового перка
+}
+
+function generateUnique(slot) {
+  if (slot === 'head') return { type: 'healBonus', val: 1, desc: `[УНИК] +1 ХП при избыточном блоке.` };
+  if (slot === 'body') return { type: 'blockBonus', val: 1, desc: `[УНИК] +1 ко всем блокам.` };
+  if (slot === 'arms') return { type: 'ignoreBlock', val: 1, desc: `[УНИК] Игнорирует 1 ед. блока врага.` };
+  if (slot === 'legs') return { type: 'dodge', val: 0.15, desc: `[УНИК] 15% шанс избежать атаки.` };
+}
+
+// ИНВЕНТАРЬ И UI
+let selectedItem = null; let isEquipped = false;
+function updateHeroTab() {
+  let totalHp = 20;
+  ['head', 'body', 'arms', 'legs'].forEach(slot => {
+    let el = document.getElementById(`eq-${slot}`);
+    let item = gameData.equip[slot];
+    if (item) {
+      totalHp += item.hp;
+      el.className = `equip-slot rarity-${item.rarity} filled`;
+      el.innerHTML = `<b>${item.name}</b><br>+${item.hp} ХП`;
+    } else {
+      el.className = `equip-slot`; el.innerHTML = `${getSlotIcon(slot)}<br>${SLOT_NAMES[slot]}`;
+    }
+  });
+  document.getElementById('hero-stats').innerText = `Максимальное ХП: ${totalHp}`;
+}
+
+function updateBagTab() {
+  document.getElementById('bag-count').innerText = gameData.inventory.length;
+  document.getElementById('imperial-amount').innerText = gameData.imperials;
+  let grid = document.getElementById('inventory-grid');
+  grid.innerHTML = '';
+  for(let i=0; i<6; i++) {
+    let item = gameData.inventory[i];
+    if (item) {
+      grid.innerHTML += `<div class="inv-slot rarity-${item.rarity} filled" onclick="openItemModalById('${item.id}', false)"><b>${item.name}</b><br>+${item.hp} ХП</div>`;
+    } else {
+      grid.innerHTML += `<div class="inv-slot">Пусто</div>`;
+    }
+  }
+}
+
+function getSlotIcon(slot) { return { head: "🪖", body: "👕", arms: "🧤", legs: "👢" }[slot]; }
+
+function openItemModalById(id, equipped) {
+  let item = equipped ? Object.values(gameData.equip).find(i => i?.id === id) : gameData.inventory.find(i => i.id === id);
+  if (!item) return;
+  selectedItem = item; isEquipped = equipped;
+  
+  document.getElementById('modal-title').innerText = item.name;
+  document.getElementById('modal-title').className = `text-${item.rarity}`;
+  let desc = `<b>Слот:</b> ${SLOT_NAMES[item.slot]}<br><b>Бонус:</b> +${item.hp} Макс ХП<br>`;
+  if (item.perk) desc += `<br>🔸 ${item.perk.desc}`;
+  if (item.unique) desc += `<br><b style="color:#fbbf24">${item.unique.desc}</b>`;
+  if (!equipped) desc += `<br><br><i>Цена продажи: ${SELL_PRICES[item.rarity]} 🪙</i>`;
+  document.getElementById('modal-desc').innerHTML = desc;
+  
+  let acts = document.getElementById('modal-actions');
+  if (equipped) {
+    acts.innerHTML = `<button class="action-btn" style="background:#f59e0b" onclick="unequipItem()">Снять</button>`;
+  } else {
+    acts.innerHTML = `<button class="action-btn" style="background:#22c55e" onclick="equipItem()">Надеть</button>
+                      <button class="action-btn" style="background:#ef4444" onclick="sellItem()">Продать</button>`;
+  }
+  document.getElementById('item-modal').style.display = 'flex';
+}
+
+function openItemModal(slot, equipped) {
+  if (equipped && gameData.equip[slot]) openItemModalById(gameData.equip[slot].id, true);
+}
+function closeModal() { document.getElementById('item-modal').style.display = 'none'; }
+
+function equipItem() {
+  if(gameData.inventory.length >= 6 && gameData.equip[selectedItem.slot]) { alert("Сумка полна! Сначала освободите место."); return; }
+  let oldItem = gameData.equip[selectedItem.slot];
+  gameData.inventory = gameData.inventory.filter(i => i.id !== selectedItem.id);
+  gameData.equip[selectedItem.slot] = selectedItem;
+  if(oldItem) gameData.inventory.push(oldItem);
+  saveData(); closeModal(); updateBagTab(); updateHeroTab();
+}
+function unequipItem() {
+  if(gameData.inventory.length >= 6) { alert("Сумка полна!"); return; }
+  gameData.equip[selectedItem.slot] = null;
+  gameData.inventory.push(selectedItem);
+  saveData(); closeModal(); updateBagTab(); updateHeroTab();
+}
+function sellItem() {
+  gameData.imperials += SELL_PRICES[selectedItem.rarity];
+  gameData.inventory = gameData.inventory.filter(i => i.id !== selectedItem.id);
+  saveData(); closeModal(); updateBagTab();
+}
+
+// БОЕВАЯ СИСТЕМА И ИНИЦИАЛИЗАЦИЯ
 let player = {}; let bot = {}; let gameIsOver = false;
 
-function rollDice() { return Math.floor(Math.random() * 3) + 1; }
-function showScreen(id) { document.getElementById("main-screen").style.display="none"; document.getElementById("battle-screen").style.display="none"; document.getElementById(id).style.display="block"; }
-
-// Обновление шапки профиля в меню
-function updateMenuProfile() {
-  let rank = getRank(playerLp);
-  document.getElementById("menu-profile").innerHTML = `
-    <div class="profile-name">👤 ${REAL_PLAYER_NAME}</div>
-    <div class="profile-rank">${rank.icon} ${rank.name} | ${playerLp} LP</div>
-  `;
+function getEquipHp(eq) { return Object.values(eq).reduce((sum, item) => sum + (item ? item.hp : 0), 0); }
+function parsePerks(eq) {
+  let p = { healOnce:0, blockPierce:0, strikes:0, dmgB:0, blockB:0, healB:0, dodge:0, ignore:0 };
+  Object.values(eq).forEach(item => {
+    if(!item) return;
+    if(item.perk) {
+      if(item.perk.type === 'heal_once') p.healOnce = item.perk.val;
+      if(item.perk.type === 'block_pierce') p.blockPierce = item.perk.val;
+      if(item.perk.type === 'first_strike') { p.strikes = item.perk.charges; p.dmgB = item.perk.val; }
+    }
+    if(item.unique) {
+      if(item.unique.type === 'healBonus') p.healB = item.unique.val;
+      if(item.unique.type === 'blockBonus') p.blockB = item.unique.val;
+      if(item.unique.type === 'ignoreBlock') p.ignore = item.unique.val;
+      if(item.unique.type === 'dodge') p.dodge = item.unique.val;
+    }
+  });
+  return p;
 }
-updateMenuProfile();
 
-function initChar(classId, isBot) {
+function initChar(classId, isBot, lp) {
+  let eq = { head:null, body:null, arms:null, legs:null };
+  if(isBot) { // Бот роллит вещи для себя
+    ['head','body','arms','legs'].forEach(s => { let drop = rollLoot(lp); if(drop) { drop.slot = s; eq[s] = drop; } });
+  } else { eq = gameData.equip; }
+  
+  let hpTotal = 20 + getEquipHp(eq);
   return {
-    classId: classId, className: CLASSES[classId].name, hp: 20, maxHp: 20,
-    stats: { dmgDealt: 0, dmgBlocked: 0, healed: 0 }, skillReady: false,
-    hotTurnsLeft: 0, usedInstinct: false, usedPrayer: false, poisoned: false, pursuitDmg: 0, retBlocks: 0, retBonus: 0
+    classId, className: CLASSES[classId].name, hp: hpTotal, maxHp: hpTotal, lp: lp,
+    stats: { dmgDealt: 0, dmgBlocked: 0, healed: 0 }, skillReady: false, hotTurnsLeft: 0,
+    usedInstinct: false, usedPrayer: false, poisoned: false, pursuitDmg: 0, retBlocks: 0, retBonus: 0,
+    eqP: parsePerks(eq) // Состояние перков
   };
 }
 
 function startGame(selectedClassId) {
-  player = initChar(selectedClassId, false);
+  player = initChar(selectedClassId, false, gameData.lp);
   const keys = Object.keys(CLASSES);
-  bot = initChar(keys[Math.floor(Math.random() * keys.length)], true);
-  
-  // Имитация рейтинга бота (+- 20 LP от игрока)
-  bot.lp = Math.max(0, playerLp + Math.floor(Math.random() * 41) - 20);
-  
+  let botLp = Math.max(0, gameData.lp + Math.floor(Math.random() * 41) - 20);
+  bot = initChar(keys[Math.floor(Math.random() * keys.length)], true, botLp);
   gameIsOver = false;
   
-  // Установка визуального оформления арены
-  let currentRank = getRank(playerLp);
-  let arenaElement = document.getElementById("battle-arena");
-  arenaElement.className = "arena " + currentRank.arenaClass;
-  
+  let currentRank = getRank(gameData.lp);
+  document.getElementById("battle-arena").className = "arena " + currentRank.arenaClass;
   document.getElementById("player-card").className = "character " + currentRank.borderClass;
   document.getElementById("bot-card").className = "character " + getRank(bot.lp).borderClass;
 
-  document.getElementById("combat-log").innerHTML = `<div class='log-entry text-skill'>⚔️ Добро пожаловать на арену: ${currentRank.name}!</div>`;
+  document.getElementById("combat-log").innerHTML = `<div class='log-entry text-skill'>⚔️ Арена: ${currentRank.name}! Бой начинается.</div>`;
   document.getElementById("btn-return").style.display = "none";
   updateScreen(); showScreen("battle-screen");
 }
 
-function returnToMenu() { 
-  updateMenuProfile();
-  showScreen("main-screen"); 
-}
+function returnToMenu() { updateMenuProfile(); showScreen("main-screen"); }
 
 function playTurn(playerChoice) {
   if (gameIsOver) return;
   let logMsg = "";
   
-  if (player.poisoned) { player.hp -= 1; logMsg += `<span class="text-dmg">☠️ Яд (Преследование) наносит вам 1 урон!</span><br>`; }
-  if (bot.poisoned) { bot.hp -= 1; logMsg += `<span class="text-heal">☠️ Яд (Преследование) наносит врагу 1 урон!</span><br>`; }
+  if (player.poisoned) { player.hp -= 1; logMsg += `<span class="text-dmg">☠️ Яд: 1 урон вам!</span><br>`; }
+  if (bot.poisoned) { bot.hp -= 1; logMsg += `<span class="text-heal">☠️ Яд: 1 урон врагу!</span><br>`; }
 
-  logMsg += processHoT(player, bot, REAL_PLAYER_NAME, "Враг");
-  logMsg += processHoT(bot, player, "Враг", REAL_PLAYER_NAME);
+  logMsg += processHoT(player, bot, REAL_PLAYER_NAME, "Враг"); logMsg += processHoT(bot, player, "Враг", REAL_PLAYER_NAME);
 
   let botChoice = bot.skillReady ? 'skill' : (Math.random() < 0.5 ? 'attack' : 'defend');
 
-  let pAttack = rollDice(); let pBlock = rollDice();
-  let bAttack = rollDice(); let bBlock = rollDice();
+  let pAttack = rollDice(); let pBlock = rollDice(); let bAttack = rollDice(); let bBlock = rollDice();
   let pIgnore = false; let pDouble = false; let pInvul = false;
   let bIgnore = false; let bDouble = false; let bInvul = false;
 
   if (playerChoice === 'skill') {
-    player.skillReady = false; playerChoice = 'attack';
-    logMsg += `<span class="text-skill">🌟 Вы применяете "${CLASSES[player.classId].activeName}"!</span><br>`;
-    if (player.classId === 'warrior') pIgnore = true;
-    if (player.classId === 'assassin') pDouble = true;
-    if (player.classId === 'guardian') pInvul = true;
-    if (player.classId === 'priest') player.hotTurnsLeft = 2;
+    player.skillReady = false; playerChoice = 'attack'; logMsg += `<span class="text-skill">🌟 Вы: "${CLASSES[player.classId].activeName}"!</span><br>`;
+    if (player.classId === 'warrior') pIgnore = true; if (player.classId === 'assassin') pDouble = true;
+    if (player.classId === 'guardian') pInvul = true; if (player.classId === 'priest') player.hotTurnsLeft = 2;
   }
   if (botChoice === 'skill') {
-    bot.skillReady = false; botChoice = 'attack';
-    logMsg += `<span class="text-skill">⚠️ Враг применяет "${CLASSES[bot.classId].activeName}"!</span><br>`;
-    if (bot.classId === 'warrior') bIgnore = true;
-    if (bot.classId === 'assassin') bDouble = true;
-    if (bot.classId === 'guardian') bInvul = true;
-    if (bot.classId === 'priest') bot.hotTurnsLeft = 2;
+    bot.skillReady = false; botChoice = 'attack'; logMsg += `<span class="text-skill">⚠️ Враг: "${CLASSES[bot.classId].activeName}"!</span><br>`;
+    if (bot.classId === 'warrior') bIgnore = true; if (bot.classId === 'assassin') bDouble = true;
+    if (bot.classId === 'guardian') bInvul = true; if (bot.classId === 'priest') bot.hotTurnsLeft = 2;
   }
 
+  // Прибавки от уникальных перков и базовых классов
+  pBlock += player.eqP.blockB; bBlock += bot.eqP.blockB;
+  bBlock = Math.max(0, bBlock - player.eqP.ignore); pBlock = Math.max(0, pBlock - bot.eqP.ignore);
+
   let pBonus = 0; let bBonus = 0;
-  if (player.classId === 'warrior' && player.hp <= 6) { pBonus += 2; logMsg += `<span class="text-skill">🔥 Берсерк: Ваша атака +2!</span><br>`; }
-  if (bot.classId === 'warrior' && bot.hp <= 6) { bBonus += 2; logMsg += `<span class="text-skill">🔥 Берсерк: Атака врага +2!</span><br>`; }
-  
-  if (player.classId === 'guardian' && player.retBonus > 0 && playerChoice === 'attack' && !pInvul) { pBonus += player.retBonus; logMsg += `<span class="text-skill">⚡ Возмездие: Ваша атака +${player.retBonus}!</span><br>`; player.retBonus = 0; player.retBlocks = 0; }
-  if (bot.classId === 'guardian' && bot.retBonus > 0 && botChoice === 'attack' && !bInvul) { bBonus += bot.retBonus; logMsg += `<span class="text-skill">⚡ Возмездие: Атака врага +${bot.retBonus}!</span><br>`; bot.retBonus = 0; bot.retBlocks = 0; }
+  if (player.classId === 'warrior' && player.hp <= 6) pBonus += 2; if (bot.classId === 'warrior' && bot.hp <= 6) bBonus += 2;
+  if (player.classId === 'guardian' && player.retBonus > 0 && playerChoice === 'attack' && !pInvul) { pBonus += player.retBonus; player.retBonus = 0; player.retBlocks = 0; }
+  if (bot.classId === 'guardian' && bot.retBonus > 0 && botChoice === 'attack' && !bInvul) { bBonus += bot.retBonus; bot.retBonus = 0; bot.retBlocks = 0; }
+
+  // Экипировка: Первый удар
+  if (playerChoice === 'attack' && player.eqP.strikes > 0) { pBonus += player.eqP.dmgB; player.eqP.strikes--; logMsg += `<i class="text-info">🧤 Перчатки: Урон +${player.eqP.dmgB}</i><br>`; }
+  if (botChoice === 'attack' && bot.eqP.strikes > 0) { bBonus += bot.eqP.dmgB; bot.eqP.strikes--; logMsg += `<i class="text-info">🧤 Враг использует перчатки!</i><br>`; }
 
   pAttack += pBonus; bAttack += bBonus;
   if (pDouble) pAttack *= 2; if (bDouble) bAttack *= 2;
 
+  // Матрица
   if (playerChoice === 'attack' && botChoice === 'attack') {
     let pDmgTaken = bAttack; let bDmgTaken = pAttack;
-    if (player.classId === 'assassin' && player.hp <= 4 && !player.usedInstinct) { pDmgTaken = 0; player.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт выживания: Вы уклонились!</span><br>`; }
-    if (bot.classId === 'assassin' && bot.hp <= 4 && !bot.usedInstinct) { bDmgTaken = 0; bot.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт выживания: Враг уклонился!</span><br>`; }
+    
+    // Проверки уклонений
+    if (player.classId === 'assassin' && player.hp <= 4 && !player.usedInstinct) { pDmgTaken = 0; player.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт: Вы уклонились!</span><br>`; }
+    else if (Math.random() < player.eqP.dodge) { pDmgTaken = 0; logMsg += `<span class="text-info">👢 Сапоги: Вы уклонились!</span><br>`; }
+    
+    if (bot.classId === 'assassin' && bot.hp <= 4 && !bot.usedInstinct) { bDmgTaken = 0; bot.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт: Враг уклонился!</span><br>`; }
+    else if (Math.random() < bot.eqP.dodge) { bDmgTaken = 0; logMsg += `<span class="text-info">👢 Враг уклонился!</span><br>`; }
+
     if (pInvul) pDmgTaken = 0; if (bInvul) bDmgTaken = 0;
 
     logMsg += `⚔️ Встречная атака! Вы бьете (${pAttack}), Враг бьет (${bAttack}).<br>`;
@@ -131,160 +291,123 @@ function playTurn(playerChoice) {
     if (pDmgTaken > 0) logMsg += applyDamage(player, bot, pDmgTaken, REAL_PLAYER_NAME);
 
   } else if (playerChoice === 'defend' && botChoice === 'defend') {
-    logMsg += `<span class="text-block">🛡️ Оба приготовились к защите. Никто не получил урона.</span>`;
+    logMsg += `<span class="text-block">🛡️ Оба защищаются.</span>`;
   } else if (playerChoice === 'attack' && botChoice === 'defend') {
-    logMsg += resolveCombat(player, bot, pAttack, (pIgnore ? 0 : bBlock), REAL_PLAYER_NAME, "Враг", pIgnore, pDouble);
+    logMsg += resolveCombat(player, bot, pAttack, (pIgnore ? 0 : bBlock), REAL_PLAYER_NAME, "Враг", pIgnore);
   } else if (playerChoice === 'defend' && botChoice === 'attack') {
-    logMsg += resolveCombat(bot, player, bAttack, (bIgnore ? 0 : pBlock), "Враг", REAL_PLAYER_NAME, bIgnore, bDouble);
+    logMsg += resolveCombat(bot, player, bAttack, (bIgnore ? 0 : pBlock), "Враг", REAL_PLAYER_NAME, bIgnore);
   }
 
-  if (player.classId === 'warrior' && player.hp > 0 && player.hp < 10) { player.hp += 1; logMsg += `<span class="text-heal">🩸 Боевой раж восстанавливает вам 1 ХП.</span><br>`; }
-  if (bot.classId === 'warrior' && bot.hp > 0 && bot.hp < 10) { bot.hp += 1; logMsg += `<span class="text-dmg">🩸 Боевой раж восстанавливает врагу 1 ХП.</span><br>`; }
+  // Экипировка: Хил при падении ХП
+  if (player.hp < player.maxHp && player.eqP.healOnce > 0) { player.hp = Math.min(player.maxHp, player.hp + player.eqP.healOnce); logMsg += `<span class="text-heal">🪖 Шлем лечит вам ${player.eqP.healOnce} ХП.</span><br>`; player.eqP.healOnce = 0; }
+  if (bot.hp < bot.maxHp && bot.eqP.healOnce > 0) { bot.hp = Math.min(bot.maxHp, bot.hp + bot.eqP.healOnce); bot.eqP.healOnce = 0; }
+
+  if (player.classId === 'warrior' && player.hp > 0 && player.hp < 10) { player.hp += 1; logMsg += `<span class="text-heal">🩸 Боевой раж: +1 ХП.</span><br>`; }
+  if (bot.classId === 'warrior' && bot.hp > 0 && bot.hp < 10) { bot.hp += 1; }
 
   checkSkills(player, bot, "Вы"); checkSkills(bot, player, "Враг");
   logToScreen(logMsg); updateScreen(); checkWinner();
 }
 
 function processHoT(healer, target, hName, tName) {
-  let msg = "";
   if (healer.hotTurnsLeft > 0) {
-    healer.hp += 2; if (healer.hp > healer.maxHp) healer.hp = healer.maxHp;
-    healer.hotTurnsLeft--;
-    msg += `💖 <i>${hName} лечит <span class="text-heal">2 ХП</span> от Силы жизни.</i><br>`;
-    if (healer.classId === 'priest') {
-      target.hp -= 2; msg += `🌟 Обжигающий свет наносит ${tName} <span class="text-dmg">2 урона</span>!<br>`;
+    healer.hp += 2; if (healer.hp > healer.maxHp) healer.hp = healer.maxHp; healer.hotTurnsLeft--;
+    let m = `💖 <i>${hName} лечит <span class="text-heal">2 ХП</span> (Сила жизни).</i><br>`;
+    if (healer.classId === 'priest') { target.hp -= 2; m += `🌟 Свет наносит ${tName} <span class="text-dmg">2 урона</span>!<br>`; }
+    return m;
+  } return "";
+}
+
+function resolveCombat(atkC, defC, aRoll, dBlock, aName, dName, ignBlock) {
+  let res = `🗡️ ${aName} бьет (${aRoll}), блок: ${ignBlock ? '0' : dBlock}.<br>`;
+  
+  if (defC.classId === 'assassin' && defC.hp <= 4 && !defC.usedInstinct) { defC.usedInstinct = true; return res + `<span class="text-info">🌑 Инстинкт: ${dName} уклоняется!</span>`; }
+  if (Math.random() < defC.eqP.dodge) return res + `<span class="text-info">👢 Сапоги: ${dName} уклоняется!</span>`;
+
+  if (aRoll > dBlock || ignBlock) {
+    let dmg = ignBlock ? aRoll : (aRoll - dBlock);
+    // Экипировка: Броня
+    if (defC.eqP.blockPierce > 0) {
+      let absorbed = Math.min(dmg, defC.eqP.blockPierce);
+      dmg -= absorbed; defC.eqP.blockPierce = 0;
+      res += `<span class="text-info">👕 Броня поглотила ${absorbed} урона!</span><br>`;
     }
-  }
-  return msg;
-}
-
-function resolveCombat(atkChar, defChar, atkRoll, defBlock, atkName, defName, ignoredBlock, doubleDmg) {
-  let res = `🗡️ ${atkName} бьет (${atkRoll}), блок: ${ignoredBlock ? '0 (Пробит)' : defBlock}.<br>`;
-  if (defChar.classId === 'assassin' && defChar.hp <= 4 && !defChar.usedInstinct) {
-    defChar.usedInstinct = true; return res + `<span class="text-info">🌑 Инстинкт выживания: ${defName} уклоняется от атаки!</span>`;
-  }
-  if (atkRoll > defBlock || ignoredBlock) {
-    let dmg = ignoredBlock ? atkRoll : (atkRoll - defBlock);
-    res += applyDamage(defChar, atkChar, dmg, defName);
-  } else if (atkRoll === defBlock) {
+    if(dmg > 0) res += applyDamage(defC, atkC, dmg, dName);
+  } else if (aRoll === dBlock) {
     res += `<span class="text-block">Идеальный блок!</span><br>`;
-    atkChar.stats.dmgBlocked += atkRoll; defChar.stats.dmgBlocked += defBlock;
-    res += processCounter(defChar, atkChar, defName, atkName);
-    processRetribution(defChar, defBlock);
+    atkC.stats.dmgBlocked += aRoll; defC.stats.dmgBlocked += dBlock;
+    if (defC.classId === 'guardian') { atkC.hp -= 1; res += `🗡️ <span class="text-info">Контратака: 1 урон!</span><br>`; }
+    if (defC.classId === 'guardian') { defC.retBlocks += dBlock; while(defC.retBlocks >= 2 && defC.retBonus < 5) { defC.retBlocks -= 2; defC.retBonus += 1; } }
   } else {
-    let heal = defBlock - atkRoll;
-    defChar.hp += heal; if (defChar.hp > defChar.maxHp) defChar.hp = defChar.maxHp;
-    defChar.stats.healed += heal; defChar.stats.dmgBlocked += atkRoll;
-    res += `✨ Избыточный блок! ${defName} лечит <span class="text-heal">${heal} ХП</span>.<br>`;
-    res += processCounter(defChar, atkChar, defName, atkName);
-    processRetribution(defChar, atkRoll);
-    if (defChar.classId === 'priest') { atkChar.hp -= heal; res += `🌟 Обжигающий свет наносит ${atkName} <span class="text-dmg">${heal} урона</span>!<br>`; }
+    let heal = dBlock - aRoll + defC.eqP.healB;
+    defC.hp = Math.min(defC.maxHp, defC.hp + heal);
+    defC.stats.healed += heal; defC.stats.dmgBlocked += aRoll;
+    res += `✨ Избыточный блок! ${dName} лечит <span class="text-heal">${heal} ХП</span>.<br>`;
+    if (defC.classId === 'guardian') { atkC.hp -= 1; res += `🗡️ <span class="text-info">Контратака: 1 урон!</span><br>`; }
+    if (defC.classId === 'guardian') { defC.retBlocks += aRoll; while(defC.retBlocks >= 2 && defC.retBonus < 5) { defC.retBlocks -= 2; defC.retBonus += 1; } }
+    if (defC.classId === 'priest') { atkC.hp -= heal; res += `🌟 Свет наносит ${aName} <span class="text-dmg">${heal} урона</span>!<br>`; }
   }
   return res;
 }
 
-function applyDamage(target, attacker, dmg, tName) {
+function applyDamage(t, a, dmg, tName) {
   let res = `💥 ${tName} получает <span class="text-dmg">${dmg} урона</span>.<br>`;
-  target.hp -= dmg; attacker.stats.dmgDealt += dmg;
-  if (attacker.classId === 'assassin') attacker.pursuitDmg += dmg;
-  if (target.classId === 'priest' && target.hp <= 8 && target.hp > 0 && !target.usedPrayer) {
-    target.usedPrayer = true; let heal = Math.min(6, target.maxHp - target.hp); target.hp += heal;
-    res += `🙏 <span class="text-heal">Молитва восстанавливает ${tName} ${heal} ХП!</span><br>`;
-  }
-  return res;
+  t.hp -= dmg; a.stats.dmgDealt += dmg;
+  if (a.classId === 'assassin') a.pursuitDmg += dmg;
+  if (t.classId === 'priest' && t.hp <= 8 && t.hp > 0 && !t.usedPrayer) {
+    t.usedPrayer = true; let h = Math.min(6, t.maxHp - t.hp); t.hp += h;
+    res += `🙏 <span class="text-heal">Молитва: +${h} ХП!</span><br>`;
+  } return res;
 }
 
-function processCounter(defChar, atkChar, defName, atkName) {
-  if (defChar.classId === 'guardian') { atkChar.hp -= 1; return `🗡️ <span class="text-info">Контратака наносит ${atkName} 1 урон!</span><br>`; }
-  return "";
-}
-
-function processRetribution(defChar, blockedAmt) {
-  if (defChar.classId === 'guardian') {
-    defChar.retBlocks += blockedAmt;
-    while(defChar.retBlocks >= 2 && defChar.retBonus < 5) { defChar.retBlocks -= 2; defChar.retBonus += 1; }
-  }
-}
-
-function checkSkills(char, target, name) {
-  let info = CLASSES[char.classId];
-  if (!char.skillReady && char.stats[info.reqType] >= info.reqAmt) {
-    char.skillReady = true; char.stats[info.reqType] = 0;
-  }
-  if (char.classId === 'assassin' && char.pursuitDmg >= 13 && !target.poisoned) {
-    target.poisoned = true; logToScreen(`<span class="text-info">☠️ Преследование! ${name === REAL_PLAYER_NAME ? "Враг отравлен" : "Вы отравлены"}!</span>`);
-  }
-}
-
-function buildSkillHtml(char) {
-  let info = CLASSES[char.classId]; let pct = Math.min(100, (char.stats[info.reqType] / info.reqAmt) * 100);
-  let html = `
-    <div class="skill-slot">
-      <div class="skill-fill ${char.skillReady ? 'skill-ready-fill' : ''}" style="width:${char.skillReady ? 100 : pct}%"></div>
-      <div class="skill-slot-title">⭐ ${info.activeName}</div>
-      <div class="skill-progress-text">${char.skillReady ? 'ГОТОВ' : `${char.stats[info.reqType]}/${info.reqAmt}`}</div>
-    </div>
-  `;
-  let p1State = "Активен"; let p2State = "Активен";
-  if (char.classId === 'warrior') { p1State = char.hp <= 6 ? "ОНЛАЙН (+2)" : "ХП ≤ 6"; p2State = char.hp < 10 ? "ОНЛАЙН" : "ХП < 10"; }
-  if (char.classId === 'assassin') { p1State = char.usedInstinct ? "ИСЧЕРПАН" : (char.hp <= 4 ? "ГОТОВ" : "ХП ≤ 4"); p2State = char.poisoned ? "ОТРАВЛЕНО" : `${char.pursuitDmg}/13`; }
-  if (char.classId === 'guardian') { p1State = "Авто (Блок)"; p2State = `Бонус: +${char.retBonus}`; }
-  if (char.classId === 'priest') { p1State = char.usedPrayer ? "ИСЧЕРПАН" : (char.hp <= 8 ? "ГОТОВ" : "ХП ≤ 8"); p2State = "Авто (Лечение)"; }
-
-  html += `<div class="skill-slot" style="opacity:0.8"><div class="skill-slot-title">🔵 ${info.p1}</div><div class="skill-progress-text" style="color:#9ca3af">${p1State}</div></div>`;
-  html += `<div class="skill-slot" style="opacity:0.8"><div class="skill-slot-title">🔴 ${info.p2}</div><div class="skill-progress-text" style="color:#9ca3af">${p2State}</div></div>`;
-  return html;
+function checkSkills(c, t, name) {
+  let info = CLASSES[c.classId];
+  if (!c.skillReady && c.stats[info.reqType] >= info.reqAmt) { c.skillReady = true; c.stats[info.reqType] = 0; }
+  if (c.classId === 'assassin' && c.pursuitDmg >= 13 && !t.poisoned) { t.poisoned = true; logToScreen(`<span class="text-info">☠️ ${name === REAL_PLAYER_NAME ? "Враг отравлен" : "Вы отравлены"}!</span>`); }
 }
 
 function updateScreen() {
   if (player.hp < 0) player.hp = 0; if (bot.hp < 0) bot.hp = 0;
-  
-  let pRank = getRank(playerLp);
-  let bRank = getRank(bot.lp);
-
+  let pRank = getRank(gameData.lp); let bRank = getRank(bot.lp);
   document.getElementById("ui-player-name").innerText = `${REAL_PLAYER_NAME} (${player.className})`;
-  document.getElementById("ui-player-rank").innerText = `${pRank.icon} ${playerLp} LP`;
-  
+  document.getElementById("ui-player-rank").innerText = `${pRank.icon} ${gameData.lp} LP`;
   document.getElementById("ui-bot-name").innerText = `Враг (${bot.className})`;
   document.getElementById("ui-bot-rank").innerText = `${bRank.icon} ${bot.lp} LP`;
-
   document.getElementById("ui-player-hp-fill").style.width = (player.hp / player.maxHp) * 100 + "%";
-  document.getElementById("ui-player-hp-text").innerText = `${player.hp} / ${player.maxHp} ХП`;
+  document.getElementById("ui-player-hp-text").innerText = `${player.hp} / ${player.maxHp}`;
   document.getElementById("ui-bot-hp-fill").style.width = (bot.hp / bot.maxHp) * 100 + "%";
-  document.getElementById("ui-bot-hp-text").innerText = `${bot.hp} / ${bot.maxHp} ХП`;
-  
-  document.getElementById("ui-player-skills").innerHTML = buildSkillHtml(player);
-  document.getElementById("ui-bot-skills").innerHTML = buildSkillHtml(bot);
-
+  document.getElementById("ui-bot-hp-text").innerText = `${bot.hp} / ${bot.maxHp}`;
+  document.getElementById("ui-player-skills").innerHTML = `<div class="skill-slot"><div class="skill-fill ${player.skillReady?'skill-ready-fill':''}" style="width:${player.skillReady?100:Math.min(100,(player.stats[CLASSES[player.classId].reqType]/CLASSES[player.classId].reqAmt)*100)}%"></div><div class="skill-slot-title">⭐ Навык</div></div>`;
   if (player.skillReady && !gameIsOver) {
     document.getElementById("btn-attack").style.display = "none"; document.getElementById("btn-defend").style.display = "none";
-    document.getElementById("btn-skill").style.display = "block"; document.getElementById("btn-skill").innerText = `✨ Применить: ${CLASSES[player.classId].activeName}!`;
+    document.getElementById("btn-skill").style.display = "block";
   } else if (!gameIsOver) {
     document.getElementById("btn-attack").style.display = "block"; document.getElementById("btn-defend").style.display = "block"; document.getElementById("btn-skill").style.display = "none";
   }
 }
-
 function logToScreen(msg) { document.getElementById("combat-log").innerHTML = `<div class='log-entry'>${msg}</div>` + document.getElementById("combat-log").innerHTML; }
 
 function checkWinner() {
   if (player.hp <= 0 || bot.hp <= 0) {
     gameIsOver = true; document.getElementById("btn-attack").style.display = "none"; document.getElementById("btn-defend").style.display = "none";
     document.getElementById("btn-skill").style.display = "none"; document.getElementById("btn-return").style.display = "block";
-    
     let endMsg = "";
-    if (player.hp <= 0 && bot.hp <= 0) {
-      endMsg = "<span class='text-skill'>💀 НИЧЬЯ! Оба бойца пали на арене. (LP не изменились)</span>";
-    } else if (player.hp <= 0) {
-      playerLp = Math.max(0, playerLp - 15);
+    if (player.hp <= 0 && bot.hp <= 0) { endMsg = "<span class='text-skill'>💀 НИЧЬЯ! (LP не изменились)</span>"; }
+    else if (player.hp <= 0) {
+      gameData.lp = Math.max(0, gameData.lp - 15);
       endMsg = `<span class='text-dmg'>💀 ВЫ ПРОИГРАЛИ!</span> <span class="lp-loss">(-15 LP)</span>`;
     } else {
-      playerLp += 25;
-      endMsg = `<span class='text-heal'>🏆 ВЫ ПОБЕДИЛИ!</span> <span class="lp-gain">(+25 LP)</span>`;
-      tg.HapticFeedback.notificationOccurred('success'); // Телеграм виброотклик!
+      gameData.lp += 25;
+      endMsg = `<span class='text-heal'>🏆 ПОБЕДА!</span> <span class="lp-gain">(+25 LP)</span><br>`;
+      let loot = rollLoot(gameData.lp); // ДРОП!
+      if(loot) {
+        if(gameData.inventory.length < 6) { gameData.inventory.push(loot); endMsg += `<span class="text-${loot.rarity}">🎁 Выпал предмет: ${loot.name}! Проверьте сумку.</span>`; }
+        else { gameData.imperials += SELL_PRICES[loot.rarity]; endMsg += `<span class="text-info">💰 Сумка полна! Выпавший ${loot.name} продан за ${SELL_PRICES[loot.rarity]} 🪙.</span>`; }
+      }
+      if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
     }
-    
-    // Сохраняем в память устройства
-    localStorage.setItem('middleEarthLp', playerLp);
-    logToScreen(endMsg);
+    saveData(); logToScreen(endMsg);
   }
 }
+
+updateMenuProfile();
