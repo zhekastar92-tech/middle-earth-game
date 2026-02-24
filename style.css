@@ -27,7 +27,7 @@ h1, h2, h3 { color: #fbbf24; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-top:
 .character { background: rgba(30, 41, 59, 0.85); padding: 15px; border-radius: 12px; width: 50%; box-sizing: border-box; display: flex; flex-direction: column; transition: all 0.5s;}
 .char-name { font-size: 14px; margin: 0 0 5px 0; font-weight: 700; line-height: 1.2; min-height: 34px; color: #fff;}
 
-/* Фоны Арен */
+/* Фоны Арен (Задний план боя) */
 .arena-stone { background: #4b5563; border: 2px solid #374151; }
 .arena-moon { background: #9ca3af; border: 2px solid #d1d5db; box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
 .arena-sun { background: linear-gradient(to bottom, #fef08a, #a16207); border: 2px solid #eab308; box-shadow: inset 0 0 20px rgba(234,179,8,0.4); }
@@ -38,27 +38,26 @@ h1, h2, h3 { color: #fbbf24; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-top:
 @keyframes pulseBg { 0% { box-shadow: inset 0 0 10px rgba(124,58,237,0.4); } 100% { box-shadow: inset 0 0 40px rgba(124,58,237,0.8); } }
 @keyframes pulseStars { 0% { background-position: 0% 50%; box-shadow: inset 0 0 20px rgba(244,63,94,0.4); } 100% { background-position: 100% 50%; box-shadow: inset 0 0 60px rgba(250,204,21,0.6); } }
 
-/* Рамки персонажей */
-.border-stone { border: 2px solid transparent; box-shadow: none; }
-.border-moon { border: 2px solid #d1d5db; box-shadow: 0 0 10px rgba(209,213,219,0.4); }
-.border-sun { border: 2px solid #eab308; box-shadow: 0 0 15px rgba(234,179,8,0.6); }
-.border-crystal { border: 2px solid #3b82f6; box-shadow: 0 0 20px rgba(59,130,246,0.8); }
-.border-black { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(to right, #000000, #7c3aed) border-box; box-shadow: 0 0 20px rgba(124,58,237,0.9); animation: pulseBorder 2s infinite alternate;}
-.border-stars { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(to top, #f43f5e, #facc15, #3b82f6) border-box; box-shadow: 0 0 25px rgba(244,63,94,1); animation: fireBorder 1.5s infinite alternate; }
+/* Рамки персонажей (Ранги) */
+.border-iron { border: 2px solid transparent; box-shadow: none; }
+.border-bronze { border: 2px solid #8b5a2b; box-shadow: none; }
+.border-silver { border: 2px solid #c0c0c0; box-shadow: none; }
+.border-gold { border: 2px solid #facc15; box-shadow: none; }
+.border-emerald { border: 2px solid #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.6); }
+.border-diamond { border: 2px solid #0ea5e9; box-shadow: 0 0 20px rgba(14, 165, 233, 0.7); }
+.border-master { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(to right, #ef4444, #facc15) border-box; box-shadow: 0 0 25px rgba(239, 68, 68, 0.6); }
+.border-grandmaster { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(to right, #2563eb, #7dd3fc) border-box; box-shadow: 0 0 25px rgba(37, 99, 235, 0.6); }
+.border-overlord { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(135deg, #000000, #a855f7, #000000) border-box; box-shadow: 0 0 20px #6b21a8, inset 0 0 15px #4c1d95; animation: overlordPulse 3s infinite alternate;}
+.border-phoenix { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(to top, #ea580c, #ef4444, #facc15) border-box; box-shadow: 0 0 30px #ef4444, 0 -5px 15px #facc15, inset 0 0 20px #ea580c; animation: borderFire 1.5s infinite alternate; }
 
-@keyframes pulseBorder { 0% { box-shadow: 0 0 10px rgba(124,58,237,0.5); } 100% { box-shadow: 0 0 25px rgba(124,58,237,1); } }
-@keyframes fireBorder { 0% { box-shadow: 0 0 15px rgba(244,63,94,0.8), 0 -2px 10px rgba(250,204,21,0.5); } 100% { box-shadow: 0 0 30px rgba(244,63,94,1), 0 -10px 20px rgba(250,204,21,0.8); } }
+@keyframes overlordPulse { 0% {box-shadow: 0 0 15px #4c1d95, inset 0 0 10px #000;} 100% {box-shadow: 0 0 35px #a855f7, inset 0 0 25px #6b21a8;} }
+@keyframes borderFire { 0% {box-shadow: 0 0 20px #ef4444, 0 -2px 10px #facc15, inset 0 0 10px #ea580c;} 100% {box-shadow: 0 0 45px #ef4444, 0 -10px 25px #facc15, inset 0 0 30px #ea580c;} }
 
-/* Эффекты свечения Ников */
-.text-stone { color: #9ca3af; }
-.text-moon { color: #e5e7eb; text-shadow: 0 0 5px rgba(209,213,219,0.5); }
-.text-sun { color: #fde047; text-shadow: 0 0 8px rgba(234,179,8,0.6); }
-.text-crystal { color: #93c5fd; text-shadow: 0 0 12px rgba(59,130,246,0.8); }
-.text-black { background: linear-gradient(to right, #9333ea, #d8b4fe); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 15px rgba(124,58,237,0.8); }
-.text-stars { background: linear-gradient(to right, #f43f5e, #facc15); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 15px rgba(244,63,94,0.8); animation: textFire 1s infinite alternate; }
-
-@keyframes textFire { 0% {text-shadow: 0 -2px 10px rgba(244,63,94,0.8), 0 2px 10px rgba(250,204,21,0.5);} 100% {text-shadow: 0 -5px 20px rgba(225,29,72,0.9), 0 2px 25px rgba(250,204,21,0.8);} }
-
+/* Эффекты свечения Ников (Ранги) */
+.text-master { background: linear-gradient(to right, #ef4444, #facc15); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+.text-grandmaster { background: linear-gradient(to right, #2563eb, #7dd3fc); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 10px rgba(37, 99, 235, 0.5); }
+.text-overlord { background: linear-gradient(to bottom, #d8b4fe, #4c1d95); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 15px #7c3aed; }
+.text-phoenix { background: linear-gradient(to top, #facc15, #ef4444); -webkit-background-clip: text; color: transparent; text-shadow: 0 -2px 10px rgba(239,68,68,0.8), 0 2px 15px rgba(250,204,21,0.6); animation: textFire 1s infinite alternate;}
 .bar-container { background: #0f172a; border-radius: 6px; width: 100%; height: 22px; margin-bottom: 8px; border: 1px solid #334155; overflow: hidden; position: relative;}
 /* Рамки персонажей */
 .border-iron { border: 2px solid transparent; box-shadow: none; }
