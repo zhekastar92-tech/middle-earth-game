@@ -12,7 +12,8 @@
     <button class="nav-tab active" onclick="switchTab(this, 'tab-battle')">⚔️ Бой</button>
     <button class="nav-tab" onclick="switchTab(this, 'tab-hero')">👤 Герой</button>
     <button class="nav-tab" onclick="switchTab(this, 'tab-bag')">🎒 Сумка</button>
-    <button class="nav-tab disabled">🏟️ Арены</button>
+    <button class="nav-tab" onclick="switchTab(this, 'tab-arenas')">🏟️ Арены</button>
+    <button class="nav-tab" onclick="switchTab(this, 'tab-shop')">🏪 Магазин</button>
   </div>
 
   <div id="tab-battle" class="tab-content active">
@@ -22,7 +23,7 @@
       <div class="class-grid">
         <div class="class-card" onclick="startGame('warrior')">
           <div class="class-title">🗡️ Воин</div>
-          <div class="class-desc"><b>На вылет:</b> 5 урона -> пробой.<br><b>Берсерк:</b> ХП ≤ 6 -> атака +2.<br><b>Боевой раж:</b> ХП < 6 -> реген +1.</div>
+          <div class="class-desc"><b>На вылет:</b> 5 урона -> пробой.<br><b>Берсерк:</b> ХП ≤ 6 -> атака +2.<br><b>Боевой раж:</b> ХП ≤ 6 -> реген +1.</div>
         </div>
         <div class="class-card" onclick="startGame('assassin')">
           <div class="class-title">🔪 Убийца</div>
@@ -56,14 +57,14 @@
       </div>
       
       <div class="controls" id="controls">
-  <button class="action-btn btn-attack" id="btn-attack" onclick="registerAction('attack')">🗡️ Атака</button>
-  <button class="action-btn btn-defend" id="btn-defend" onclick="registerAction('defend')">🛡️ Защита</button>
-  <button class="action-btn btn-skill" id="btn-skill" onclick="registerAction('skill')">✨ Навык!</button>
-  <button class="action-btn btn-return" id="btn-return" onclick="returnToMenu()">В меню</button>
+        <button class="action-btn btn-attack" id="btn-attack" onclick="registerAction('attack')">🗡️ Атака</button>
+        <button class="action-btn btn-defend" id="btn-defend" onclick="registerAction('defend')">🛡️ Защита</button>
+        <button class="action-btn btn-skill" id="btn-skill" onclick="registerAction('skill')">✨ Навык!</button>
+        <button class="action-btn btn-return" id="btn-return" onclick="returnToMenu()">В меню</button>
       </div>
 
       <div id="turn-timer-container">
-        ⏳ Окончание хода: <span id="turn-timer-text">4.0</span> сек.
+        ⏳ Ход через: <span id="turn-timer-text">4.0</span> сек.
       </div>
 
       <div id="combat-log"></div>
@@ -84,8 +85,18 @@
   <div id="tab-bag" class="tab-content">
     <h2>Сумка (<span id="bag-count">0</span>/6)</h2>
     <div class="imperial-count">Империалы: <span id="imperial-amount" style="color:#fbbf24">0</span> 🪙</div>
-    <div class="inventory-grid" id="inventory-grid">
-      </div>
+    <div class="inventory-grid" id="inventory-grid"></div>
+  </div>
+
+  <div id="tab-arenas" class="tab-content">
+    </div>
+
+  <div id="tab-shop" class="tab-content">
+    <h2>Магазин Империалов</h2>
+    <div class="imperial-count">Ваш баланс: <span id="shop-imperial-amount" style="color:#fbbf24">0</span> 🪙</div>
+    <div class="modal-desc" style="text-align:center; padding: 30px 10px;">
+      🛒 Скоро здесь появятся сундуки со случайной экипировкой!
+    </div>
   </div>
 
   <div id="item-modal" class="modal">
@@ -99,4 +110,4 @@
 
   <script src="script.js?v=777"></script>
 </body>
-</html>
+  </html>
