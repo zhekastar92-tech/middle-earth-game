@@ -136,6 +136,24 @@ h1, h2, h3 { color: #fbbf24; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-top:
 .modal-desc { margin: 15px 0; font-size: 13px; line-height: 1.5; color: #cbd5e1; text-align: left; background: #0f172a; padding: 10px; border-radius: 8px;}
 .modal-actions { display: flex; gap: 10px; margin-top: 15px; }
 
+/* === ОГРОМНАЯ КНОПКА В БОЙ === */
+.btn-fight-huge { 
+    background: linear-gradient(135deg, #e11d48, #be123c); 
+    color: white; 
+    border: none; 
+    padding: 15px 30px; 
+    font-size: 20px; 
+    font-weight: 900; 
+    border-radius: 12px; 
+    margin-top: 15px; 
+    cursor: pointer; 
+    text-transform: uppercase; 
+    box-shadow: 0 0 15px rgba(225, 29, 72, 0.6); 
+    animation: pulseFight 2s infinite; 
+    width: 100%;
+}
+@keyframes pulseFight { 0% { transform: scale(1); box-shadow: 0 0 15px rgba(225, 29, 72, 0.6);} 50% { transform: scale(1.02); box-shadow: 0 0 25px rgba(225, 29, 72, 0.9);} 100% { transform: scale(1); box-shadow: 0 0 15px rgba(225, 29, 72, 0.6);} }
+
 /* === ТАЙМЕР ХОДА (Текстовый) === */
 #turn-timer-container {
   width: 100%;
