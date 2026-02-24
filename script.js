@@ -141,7 +141,8 @@ function updateBagTab() {
 function getSlotIcon(slot) { return { head: "🪖", body: "👕", arms: "🧤", legs: "👢" }[slot]; }
 
 function openItemModalById(id, equipped) {
-  let item = equipped ? Object.values(gameData.equip).find(i => i && i.id === id) : gameData.inventory.find(i => i && i.id === id);
+  // Исправлено: теперь код принудительно переводит оба ID в текст перед сравнением (String)
+  let item = equipped ? Object.values(gameData.equip).find(i => i && String(i.id) === String(id)) : gameData.inventory.find(i => i && String(i.id) === String(id));
   if (!item) return;
   selectedItem = item; isEquipped = equipped;
   
@@ -385,9 +386,33 @@ function checkSkills(c, t, name) {
   if (c.classId === 'assassin' && c.pursuitDmg >= 13 && !t.poisoned) { t.poisoned = true; logToScreen(`<span class="text-info">☠️ ${name === REAL_PLAYER_NAME ? "Враг отравлен" : "Вы отравлены"}!</span>`); }
 }
 
+
+function buildSkillHtml(char) {
+  let info = CLASSES[char.classId]; 
+  let pct = Math.min(100, (char.stats[info.reqType] / info.reqAmt) * 100);
+  let html = `
+    <div class="skill-slot">
+      <div class="skill-fill ${char.skillReady ? 'skill-ready-fill' : ''}" style="width:${char.skillReady ? 100 : pct}%"></div>
+      <div class="skill-slot-title">⭐ ${info.activeName}</div>
+      <div class="skill-progress-text">${char.skillReady ? 'ГОТОВ' : `${char.stats[info.reqType]}/${info.reqAmt}`}</div>
+    </div>
+  `;
+  
+  let p1State = "Активен"; let p2State = "Активен";
+  if (char.classId === 'warrior') { p1State = char.hp <= 6 ? "ОНЛАЙН (+2)" : "ХП ≤ 6"; p2State = char.hp < 10 ? "ОНЛАЙН" : "ХП < 10"; }
+  if (char.classId === 'assassin') { p1State = char.usedInstinct ? "ИСЧЕРПАН" : (char.hp <= 4 ? "ГОТОВ" : "ХП ≤ 4"); p2State = char.poisoned ? "ОТРАВЛЕНО" : `${char.pursuitDmg}/13`; }
+  if (char.classId === 'guardian') { p1State = "Авто (Блок)"; p2State = `Бонус: +${char.retBonus}`; }
+  if (char.classId === 'priest') { p1State = char.usedPrayer ? "ИСЧЕРПАН" : (char.hp <= 8 ? "ГОТОВ" : "ХП ≤ 8"); p2State = "Авто (Лечение)"; }
+
+  html += `<div class="skill-slot" style="opacity:0.8"><div class="skill-slot-title">🔵 ${info.p1}</div><div class="skill-progress-text" style="color:#9ca3af">${p1State}</div></div>`;
+  html += `<div class="skill-slot" style="opacity:0.8"><div class="skill-slot-title">🔴 ${info.p2}</div><div class="skill-progress-text" style="color:#9ca3af">${p2State}</div></div>`;
+  return html;
+}
+
 function updateScreen() {
   if (player.hp < 0) player.hp = 0; if (bot.hp < 0) bot.hp = 0;
   let pRank = getRank(gameData.lp); let bRank = getRank(bot.lp);
+  
   document.getElementById("ui-player-name").innerText = `${REAL_PLAYER_NAME} (${player.className})`;
   document.getElementById("ui-player-rank").innerText = `${pRank.icon} ${gameData.lp} LP`;
   document.getElementById("ui-bot-name").innerText = `Враг (${bot.className})`;
@@ -398,8 +423,9 @@ function updateScreen() {
   document.getElementById("ui-bot-hp-fill").style.width = (bot.hp / bot.maxHp) * 100 + "%";
   document.getElementById("ui-bot-hp-text").innerText = `${bot.hp} / ${bot.maxHp}`;
   
-  let pSkillPct = player.skillReady ? 100 : Math.min(100, (player.stats[CLASSES[player.classId].reqType] / CLASSES[player.classId].reqAmt) * 100);
-  document.getElementById("ui-player-skills").innerHTML = `<div class="skill-slot"><div class="skill-fill ${player.skillReady ? 'skill-ready-fill' : ''}" style="width:${pSkillPct}%"></div><div class="skill-slot-title">⭐ Навык</div></div>`;
+  // Возвращаем отрисовку 3 навыков
+  document.getElementById("ui-player-skills").innerHTML = buildSkillHtml(player);
+  document.getElementById("ui-bot-skills").innerHTML = buildSkillHtml(bot);
   
   if (player.skillReady && !gameIsOver) {
     document.getElementById("btn-attack").style.display = "none"; document.getElementById("btn-defend").style.display = "none";
@@ -408,7 +434,7 @@ function updateScreen() {
     document.getElementById("btn-attack").style.display = "block"; document.getElementById("btn-defend").style.display = "block";
     document.getElementById("btn-skill").style.display = "none";
   }
-}
+                                                        }
 
 function logToScreen(msg) { document.getElementById("combat-log").innerHTML = `<div class='log-entry'>${msg}</div>` + document.getElementById("combat-log").innerHTML; }
 
