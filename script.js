@@ -17,7 +17,7 @@ try {
 
 function saveData() { localStorage.setItem('middleEarthData', JSON.stringify(gameData)); }
 
-// РАНГИ (Только для рамок персонажей и свечения ников)
+// РАНГИ
 const RANKS = [
   { name: "Железо", icon: "🔘", maxLp: 300, borderClass: "border-iron", textClass: "" },
   { name: "Бронза", icon: "🟤", maxLp: 600, borderClass: "border-bronze", textClass: "" },
@@ -31,7 +31,7 @@ const RANKS = [
   { name: "Феникс", icon: "🐦‍🔥", maxLp: 99999, borderClass: "border-phoenix", textClass: "text-phoenix" }
 ];
 
-// АРЕНЫ (Только для заднего фона и логики лута)
+// АРЕНЫ
 const ARENAS = [
   { name: "Каменный круг", icon: "🪨", maxLp: 300, arenaClass: "arena-stone" },
   { name: "Лунный чертог", icon: "🌘", maxLp: 600, arenaClass: "arena-moon" },
@@ -84,6 +84,7 @@ function switchTab(btn, tabId) {
   }
   if(tabId === 'tab-hero') updateHeroTab();
   if(tabId === 'tab-bag') updateBagTab();
+  if(tabId === 'tab-arenas') renderArenas();
 }
 
 function updateMenuProfile() {
@@ -102,28 +103,36 @@ function rollLoot(lp) {
   return null;
 }
 
-function rollBotLoot(lp) {
+// ИСПРАВЛЕНИЕ: Бот генерирует вещи для конкретного слота
+function rollBotItemForSlot(lp, slot) {
   let arenaIdx = ARENAS.findIndex(a => lp <= a.maxLp);
   if (arenaIdx === -1) arenaIdx = ARENAS.length - 1;
 
+  let rarity = null;
   if (arenaIdx <= 2) { 
      let drops = getArenaDrops(lp);
      let r = Math.random();
-     if (r < drops.epic * 3) return generateItem('epic');
-     if (r < (drops.epic + drops.rare) * 3) return generateItem('rare');
-     if (r < (drops.epic + drops.rare + drops.uncommon) * 3) return generateItem('uncommon');
-     if (r < (drops.epic + drops.rare + drops.uncommon + drops.common) * 3) return generateItem('common');
-     return null;
+     if (r < drops.epic * 3) rarity = 'epic';
+     else if (r < (drops.epic + drops.rare) * 3) rarity = 'rare';
+     else if (r < (drops.epic + drops.rare + drops.uncommon) * 3) rarity = 'uncommon';
+     else if (r < (drops.epic + drops.rare + drops.uncommon + drops.common) * 3) rarity = 'common';
   } else if (arenaIdx === 3) { 
-     return Math.random() < 0.5 ? generateItem('epic') : generateItem('rare');
+     rarity = Math.random() < 0.5 ? 'epic' : 'rare';
+  } else if (arenaIdx === 4) { 
+     rarity = Math.random() < 0.8 ? 'epic' : 'rare';
   } else { 
-     return Math.random() < 0.8 ? generateItem('epic') : generateItem('rare');
+     // Звездный Олимп: 95% Эпик, 5% Раре
+     rarity = Math.random() < 0.95 ? 'epic' : 'rare';
   }
+  
+  if (!rarity) return null;
+  return generateItem(rarity, slot); // Передаем слот насильно
 }
 
-function generateItem(rarity) {
+// ИСПРАВЛЕНИЕ: Теперь функция может принимать конкретный слот (forceSlot)
+function generateItem(rarity, forceSlot = null) {
   const slots = ['head', 'body', 'arms', 'legs'];
-  const slot = slots[Math.floor(Math.random() * slots.length)];
+  const slot = forceSlot ? forceSlot : slots[Math.floor(Math.random() * slots.length)];
   let item = { id: Date.now() + Math.floor(Math.random()*1000), rarity: rarity, slot: slot, hp: 0, perk: null, unique: null };
   if (rarity === 'common') { item.hp = Math.floor(Math.random() * 2) + 1; } 
   else if (rarity === 'uncommon') { item.hp = Math.floor(Math.random() * 2) + 1; if (Math.random() < 0.1) item.perk = generatePerk(slot, 1, 1, 1); } 
@@ -167,6 +176,10 @@ function updateHeroTab() {
 function updateBagTab() {
   document.getElementById('bag-count').innerText = gameData.inventory.length;
   document.getElementById('imperial-amount').innerText = gameData.imperials;
+  // Обновляем заодно и баланс в магазине
+  let shopBal = document.getElementById('shop-imperial-amount');
+  if(shopBal) shopBal.innerText = gameData.imperials;
+  
   let grid = document.getElementById('inventory-grid');
   grid.innerHTML = '';
   for(let i=0; i<6; i++) {
@@ -251,10 +264,11 @@ function parsePerks(eq) {
 function initChar(classId, isBot, lp) {
   let eq = { head:null, body:null, arms:null, legs:null };
   if(isBot) {
-    for(let i=0; i<4; i++) {
-        let drop = rollBotLoot(lp); 
-        if(drop) eq[drop.slot] = drop;
-    }
+    // Гарантированный проход по каждому слоту 
+    ['head', 'body', 'arms', 'legs'].forEach(slot => {
+        let drop = rollBotItemForSlot(lp, slot); 
+        if(drop) eq[slot] = drop;
+    });
   } else { eq = gameData.equip; }
   
   let hpTotal = 20 + getEquipHp(eq);
@@ -305,9 +319,9 @@ function startGame(selectedClassId) {
   bot = initChar(keys[Math.floor(Math.random() * keys.length)], true, botLp);
   gameIsOver = false;
   
-  let currentArena = getArena(gameData.lp); // Арена для заднего фона
-  let pRank = getRank(player.lp);           // Ранг игрока для свечения
-  let bRank = getRank(bot.lp);              // Ранг бота для свечения
+  let currentArena = getArena(gameData.lp); 
+  let pRank = getRank(player.lp);           
+  let bRank = getRank(bot.lp);              
 
   document.getElementById("battle-arena").className = "arena " + currentArena.arenaClass;
   document.getElementById("player-card").className = "character " + pRank.borderClass;
@@ -581,6 +595,49 @@ function openCharModal(isPlayer) {
     }
   });
   if (!hasItems) desc += `<span style="color:#9ca3af">Нет предметов</span>`;
+  
+  document.getElementById('modal-desc').innerHTML = desc;
+  document.getElementById('modal-actions').innerHTML = ''; 
+  document.getElementById('item-modal').style.display = 'flex';
+}
+
+// === НОВЫЕ ФУНКЦИИ ДЛЯ АРЕН ===
+function renderArenas() {
+  let html = '<div style="margin-bottom:15px;"><h2>Список Арен</h2><span style="font-size:12px; color:#94a3b8;">Нажмите на арену, чтобы увидеть награды</span></div><div class="class-grid">'; 
+  let prevLp = 0;
+  ARENAS.forEach((a, idx) => {
+    html += `
+      <div class="class-card ${a.arenaClass}" style="border-width: 2px;" onclick="openArenaModal(${idx})">
+        <div class="class-title" style="color: #fff; text-shadow: 0 0 5px rgba(0,0,0,0.8);">${a.icon} ${a.name}</div>
+        <div class="class-desc" style="color: #fbbf24; font-weight: bold; text-align: center; font-size: 13px;">${prevLp} - ${a.maxLp === 99999 ? '∞' : a.maxLp} LP</div>
+      </div>
+    `;
+    prevLp = a.maxLp + 1;
+  });
+  html += '</div>';
+  document.getElementById('tab-arenas').innerHTML = html;
+}
+
+function openArenaModal(idx) {
+  let a = ARENAS[idx];
+  let prevLp = idx === 0 ? 0 : ARENAS[idx-1].maxLp + 1;
+  // Для Олимпа (maxLp = 99999) берем шансы как для 3500 LP
+  let drops = getArenaDrops(a.maxLp === 99999 ? 3500 : a.maxLp); 
+  
+  document.getElementById('modal-title').innerText = `${a.icon} ${a.name}`;
+  document.getElementById('modal-title').className = "text-skill"; 
+  
+  let desc = `<div style="text-align:center; margin-bottom: 10px; font-weight:bold;">${prevLp} - ${a.maxLp === 99999 ? '∞' : a.maxLp} LP</div>`;
+  desc += `<hr style="border-color:#475569; margin:10px 0;">`;
+  desc += `<b>Шансы за победу:</b><br><br>`;
+  
+  if (drops.common > 0) desc += `<span class="text-common">Обычный:</span> ${(drops.common*100).toFixed(1)}%<br>`;
+  if (drops.uncommon > 0) desc += `<span class="text-uncommon">Необычный:</span> ${(drops.uncommon*100).toFixed(1)}%<br>`;
+  if (drops.rare > 0) desc += `<span class="text-rare">Редкий:</span> ${(drops.rare*100).toFixed(1)}%<br>`;
+  if (drops.epic > 0) desc += `<span class="text-epic">Эпический:</span> ${(drops.epic*100).toFixed(1)}%<br>`;
+  
+  let emptyChance = 1 - (drops.common + drops.uncommon + drops.rare + drops.epic);
+  if (emptyChance > 0.001) desc += `<br><span style="color:#64748b">Ничего не выпадет: ${(emptyChance*100).toFixed(1)}%</span><br>`;
   
   document.getElementById('modal-desc').innerHTML = desc;
   document.getElementById('modal-actions').innerHTML = ''; 
