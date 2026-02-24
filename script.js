@@ -223,6 +223,11 @@ function sellItem() {
 
 // БОЕВАЯ СИСТЕМА
 let player = {}; let bot = {}; let gameIsOver = false;
+let turnTimerId = null;
+let turnTimeLeft = 4000; // 4 секунды
+const TURN_DURATION = 4000;
+let queuedPlayerAction = 'skip'; 
+let isTurnActive = false;
 
 function getEquipHp(eq) { return Object.values(eq).reduce((sum, item) => sum + (item ? item.hp : 0), 0); }
 function parsePerks(eq) {
@@ -260,6 +265,52 @@ function initChar(classId, isBot, lp) {
   };
 }
 
+function startTurnTimer() {
+  if (gameIsOver) return;
+  turnTimeLeft = TURN_DURATION;
+  queuedPlayerAction = 'skip';
+  isTurnActive = true;
+  
+  document.querySelectorAll('.controls .action-btn').forEach(btn => {
+    if (btn.id !== 'btn-return') {
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+    }
+  });
+  updateScreen();
+
+  document.getElementById("turn-timer-container").style.display = "block";
+  let fillEl = document.getElementById("turn-timer-fill");
+  
+  clearInterval(turnTimerId);
+  turnTimerId = setInterval(() => {
+    turnTimeLeft -= 100;
+    let pct = (turnTimeLeft / TURN_DURATION) * 100;
+    fillEl.style.width = `${pct}%`;
+    
+    if (turnTimeLeft <= 1000) fillEl.classList.add('timer-urgent');
+    else fillEl.classList.remove('timer-urgent');
+
+    if (turnTimeLeft <= 0) {
+      clearInterval(turnTimerId);
+      isTurnActive = false;
+      fillEl.style.width = `0%`;
+      playTurn(queuedPlayerAction);
+    }
+  }, 100);
+}
+
+function registerAction(action) {
+  if (!isTurnActive || queuedPlayerAction !== 'skip') return;
+  queuedPlayerAction = action;
+  document.querySelectorAll('.controls .action-btn').forEach(btn => {
+    if (btn.id !== 'btn-return') {
+      btn.style.opacity = '0.4';
+      btn.style.pointerEvents = 'none';
+    }
+  });
+      }
+
 function startGame(selectedClassId) {
   player = initChar(selectedClassId, false, gameData.lp);
   const keys = Object.keys(CLASSES);
@@ -279,6 +330,7 @@ function startGame(selectedClassId) {
   switchTab(null, "tab-battle"); 
   document.getElementById("main-screen").style.display = "none"; 
   document.getElementById("battle-screen").style.display = "block";
+  startTurnTimer();
 }
 
 function returnToMenu() { 
@@ -293,6 +345,10 @@ function playTurn(playerChoice) {
   if (gameIsOver) return;
   let logMsg = "";
   
+  if (playerChoice === 'skip') {
+      logMsg += `<span class="text-block">⏳ Вы не успели сделать выбор и пропускаете ход!</span><br>`;
+  }
+  
   if (player.poisoned) { player.hp -= 1; logMsg += `<span class="text-dmg">☠️ Яд: 1 урон вам!</span><br>`; }
   if (bot.poisoned) { bot.hp -= 1; logMsg += `<span class="text-heal">☠️ Яд: 1 урон врагу!</span><br>`; }
 
@@ -301,7 +357,11 @@ function playTurn(playerChoice) {
 
   let botChoice = bot.skillReady ? 'skill' : (Math.random() < 0.5 ? 'attack' : 'defend');
 
-  let pAttack = rollDice(); let pBlock = rollDice(); let bAttack = rollDice(); let bBlock = rollDice();
+  // Если скип - игрок бросает нули
+  let pAttack = playerChoice === 'skip' ? 0 : rollDice(); 
+  let pBlock = playerChoice === 'skip' ? 0 : rollDice(); 
+  let bAttack = rollDice(); let bBlock = rollDice();
+  
   let pIgnore = false; let pDouble = false; let pInvul = false;
   let bIgnore = false; let bDouble = false; let bInvul = false;
 
@@ -330,28 +390,48 @@ function playTurn(playerChoice) {
   pAttack += pBonus; bAttack += bBonus;
   if (pDouble) pAttack *= 2; if (bDouble) bAttack *= 2;
 
+  // Логика столкновения действий
   if (playerChoice === 'attack' && botChoice === 'attack') {
     let pDmgTaken = bAttack; let bDmgTaken = pAttack;
-    
     if (player.classId === 'assassin' && player.hp <= 4 && !player.usedInstinct) { pDmgTaken = 0; player.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт: Вы уклонились!</span><br>`; }
     else if (Math.random() < player.eqP.dodge) { pDmgTaken = 0; logMsg += `<span class="text-info">👢 Сапоги: Вы уклонились!</span><br>`; }
-    
     if (bot.classId === 'assassin' && bot.hp <= 4 && !bot.usedInstinct) { bDmgTaken = 0; bot.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт: Враг уклонился!</span><br>`; }
     else if (Math.random() < bot.eqP.dodge) { bDmgTaken = 0; logMsg += `<span class="text-info">👢 Враг уклонился!</span><br>`; }
-
     if (pInvul) pDmgTaken = 0; if (bInvul) bDmgTaken = 0;
-
     logMsg += `⚔️ Встречная атака! Вы бьете (${pAttack}), Враг бьет (${bAttack}).<br>`;
     if (bDmgTaken > 0) logMsg += applyDamage(bot, player, bDmgTaken, "Враг");
     if (pDmgTaken > 0) logMsg += applyDamage(player, bot, pDmgTaken, REAL_PLAYER_NAME);
-
-  } else if (playerChoice === 'defend' && botChoice === 'defend') {
-    logMsg += `<span class="text-block">🛡️ Оба защищаются.</span>`;
+  } else if ((playerChoice === 'defend' || playerChoice === 'skip') && botChoice === 'defend') {
+    logMsg += `<span class="text-block">🛡️ Никто не атаковал.</span><br>`;
   } else if (playerChoice === 'attack' && botChoice === 'defend') {
     logMsg += resolveCombat(player, bot, pAttack, (pIgnore ? 0 : bBlock), REAL_PLAYER_NAME, "Враг", pIgnore);
-  } else if (playerChoice === 'defend' && botChoice === 'attack') {
+  } else if ((playerChoice === 'defend' || playerChoice === 'skip') && botChoice === 'attack') {
     logMsg += resolveCombat(bot, player, bAttack, (bIgnore ? 0 : pBlock), "Враг", REAL_PLAYER_NAME, bIgnore);
   }
+
+  if (player.hp < player.maxHp && player.eqP.healOnce > 0) { 
+    let deficit = player.maxHp - player.hp; let healAmt = Math.min(deficit, player.eqP.healOnce); 
+    player.hp += healAmt; player.eqP.healOnce -= healAmt; 
+    logMsg += `<span class="text-heal">🪖 Шлем лечит вам ${healAmt} ХП (осталось: ${player.eqP.healOnce}).</span><br>`; 
+  }
+  if (bot.hp < bot.maxHp && bot.eqP.healOnce > 0) { 
+    let deficit = bot.maxHp - bot.hp; let healAmt = Math.min(deficit, bot.eqP.healOnce); 
+    bot.hp += healAmt; bot.eqP.healOnce -= healAmt; 
+  }
+  if (player.classId === 'warrior' && player.hp > 0 && player.hp < 10) { player.hp += 1; logMsg += `<span class="text-heal">🩸 Боевой раж: +1 ХП.</span><br>`; }
+  if (bot.classId === 'warrior' && bot.hp > 0 && bot.hp < 10) { bot.hp += 1; }
+
+  checkSkills(player, bot, "Вы"); checkSkills(bot, player, "Враг");
+  logToScreen(logMsg); updateScreen(); checkWinner();
+
+  // Логика паузы перед следующим ходом
+  if (!gameIsOver) {
+    document.getElementById("turn-timer-container").style.display = "none";
+    setTimeout(() => { startTurnTimer(); }, 1500); // 1.5 секунды на чтение лога
+  } else {
+    document.getElementById("turn-timer-container").style.display = "none";
+  }
+      }
 
   // Экипировка: Хил при падении ХП (С умным расчетом дефицита)
   if (player.hp < player.maxHp && player.eqP.healOnce > 0) { 
