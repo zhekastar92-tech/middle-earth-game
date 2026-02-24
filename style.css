@@ -116,24 +116,21 @@ h1, h2, h3 { color: #fbbf24; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-top:
 .modal-desc { margin: 15px 0; font-size: 13px; line-height: 1.5; color: #cbd5e1; text-align: left; background: #0f172a; padding: 10px; border-radius: 8px;}
 .modal-actions { display: flex; gap: 10px; margin-top: 15px; }
 
-/* === ТАЙМЕР ХОДА === */
+/* === ТАЙМЕР ХОДА (Текстовый) === */
 #turn-timer-container {
   width: 100%;
-  background: #0f172a;
-  height: 12px;
-  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.8);
+  padding: 12px;
+  border-radius: 8px;
   margin-bottom: 20px;
   border: 1px solid #334155;
-  overflow: hidden;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+  font-weight: bold;
+  color: #cbd5e1;
+  box-sizing: border-box;
   display: none; /* Скрыт до начала боя */
 }
-#turn-timer-fill {
-  height: 100%;
-  width: 100%;
-  background: linear-gradient(90deg, #10b981, #22c55e);
-  transition: width 0.1s linear, background 0.3s ease;
+#turn-timer-text {
+  color: #10b981; /* Зеленый цвет по умолчанию */
+  font-size: 18px;
+  transition: color 0.3s;
 }
-.timer-urgent {
-  background: linear-gradient(90deg, #f59e0b, #ef4444) !important;
-             }
