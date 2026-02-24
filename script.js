@@ -1,26 +1,44 @@
+// Инициализация Telegram API
+const tg = window.Telegram.WebApp;
+tg.expand(); // Разворачиваем игру на весь экран
+const REAL_PLAYER_NAME = tg.initDataUnsafe?.user?.first_name || "Вы";
+
+// Система рангов и арен
+const RANKS = [
+  { name: "Новичок", icon: "🪨", maxLp: 99, arenaClass: "arena-wood", borderClass: "border-wood" },
+  { name: "Боец", icon: "🥉", maxLp: 299, arenaClass: "arena-bronze", borderClass: "border-bronze" },
+  { name: "Гладиатор", icon: "🥈", maxLp: 599, arenaClass: "arena-silver", borderClass: "border-silver" },
+  { name: "Чемпион", icon: "🥇", maxLp: 9999, arenaClass: "arena-gold", borderClass: "border-gold" }
+];
+
+// Получение LP из памяти телефона (или 0, если первый вход)
+let playerLp = parseInt(localStorage.getItem('middleEarthLp')) || 0;
+
+function getRank(lp) {
+  return RANKS.find(r => lp <= r.maxLp) || RANKS[RANKS.length - 1];
+}
+
 const CLASSES = {
-  warrior: { 
-    name: "Воин", activeName: "На вылет", reqType: "dmgDealt", reqAmt: 5, activeMsg: "Пробой брони активирован!",
-    p1: "Берсерк", p2: "Боевой раж" 
-  },
-  assassin: { 
-    name: "Убийца", activeName: "Двойной удар", reqType: "dmgDealt", reqAmt: 4, activeMsg: "Двойной урон готов!",
-    p1: "Инстинкт выживания", p2: "Преследование" 
-  },
-  guardian: { 
-    name: "Страж", activeName: "Оплот", reqType: "dmgBlocked", reqAmt: 5, activeMsg: "Абсолютный блок и контратака!",
-    p1: "Контратака", p2: "Возмездие" 
-  },
-  priest: { 
-    name: "Жрец", activeName: "Сила жизни", reqType: "healed", reqAmt: 3, activeMsg: "Благословение исцеления наложено!",
-    p1: "Молитва", p2: "Обжигающий свет" 
-  }
+  warrior: { name: "Воин", activeName: "На вылет", reqType: "dmgDealt", reqAmt: 5, activeMsg: "Пробой брони активирован!", p1: "Берсерк", p2: "Боевой раж" },
+  assassin: { name: "Убийца", activeName: "Двойной удар", reqType: "dmgDealt", reqAmt: 4, activeMsg: "Двойной урон готов!", p1: "Инстинкт выживания", p2: "Преследование" },
+  guardian: { name: "Страж", activeName: "Оплот", reqType: "dmgBlocked", reqAmt: 5, activeMsg: "Абсолютный блок и контратака!", p1: "Контратака", p2: "Возмездие" },
+  priest: { name: "Жрец", activeName: "Сила жизни", reqType: "healed", reqAmt: 3, activeMsg: "Благословение исцеления наложено!", p1: "Молитва", p2: "Обжигающий свет" }
 };
 
 let player = {}; let bot = {}; let gameIsOver = false;
 
 function rollDice() { return Math.floor(Math.random() * 3) + 1; }
 function showScreen(id) { document.getElementById("main-screen").style.display="none"; document.getElementById("battle-screen").style.display="none"; document.getElementById(id).style.display="block"; }
+
+// Обновление шапки профиля в меню
+function updateMenuProfile() {
+  let rank = getRank(playerLp);
+  document.getElementById("menu-profile").innerHTML = `
+    <div class="profile-name">👤 ${REAL_PLAYER_NAME}</div>
+    <div class="profile-rank">${rank.icon} ${rank.name} | ${playerLp} LP</div>
+  `;
+}
+updateMenuProfile();
 
 function initChar(classId, isBot) {
   return {
@@ -34,25 +52,39 @@ function startGame(selectedClassId) {
   player = initChar(selectedClassId, false);
   const keys = Object.keys(CLASSES);
   bot = initChar(keys[Math.floor(Math.random() * keys.length)], true);
+  
+  // Имитация рейтинга бота (+- 20 LP от игрока)
+  bot.lp = Math.max(0, playerLp + Math.floor(Math.random() * 41) - 20);
+  
   gameIsOver = false;
-  document.getElementById("combat-log").innerHTML = "<div class='log-entry text-skill'>⚔️ Бой начался! У всех бойцов по 20 ХП и 3 навыка.</div>";
+  
+  // Установка визуального оформления арены
+  let currentRank = getRank(playerLp);
+  let arenaElement = document.getElementById("battle-arena");
+  arenaElement.className = "arena " + currentRank.arenaClass;
+  
+  document.getElementById("player-card").className = "character " + currentRank.borderClass;
+  document.getElementById("bot-card").className = "character " + getRank(bot.lp).borderClass;
+
+  document.getElementById("combat-log").innerHTML = `<div class='log-entry text-skill'>⚔️ Добро пожаловать на арену: ${currentRank.name}!</div>`;
   document.getElementById("btn-return").style.display = "none";
   updateScreen(); showScreen("battle-screen");
 }
 
-function returnToMenu() { showScreen("main-screen"); }
+function returnToMenu() { 
+  updateMenuProfile();
+  showScreen("main-screen"); 
+}
 
 function playTurn(playerChoice) {
   if (gameIsOver) return;
   let logMsg = "";
   
-  // 1. Пред-ходовые эффекты (Яд от Преследования)
   if (player.poisoned) { player.hp -= 1; logMsg += `<span class="text-dmg">☠️ Яд (Преследование) наносит вам 1 урон!</span><br>`; }
   if (bot.poisoned) { bot.hp -= 1; logMsg += `<span class="text-heal">☠️ Яд (Преследование) наносит врагу 1 урон!</span><br>`; }
 
-  // 2. Исцеление (Сила жизни) и Обжигающий свет
-  logMsg += processHoT(player, bot, "Вы", "Враг");
-  logMsg += processHoT(bot, player, "Враг", "Вы");
+  logMsg += processHoT(player, bot, REAL_PLAYER_NAME, "Враг");
+  logMsg += processHoT(bot, player, "Враг", REAL_PLAYER_NAME);
 
   let botChoice = bot.skillReady ? 'skill' : (Math.random() < 0.5 ? 'attack' : 'defend');
 
@@ -61,7 +93,6 @@ function playTurn(playerChoice) {
   let pIgnore = false; let pDouble = false; let pInvul = false;
   let bIgnore = false; let bDouble = false; let bInvul = false;
 
-  // 3. Активация навыков
   if (playerChoice === 'skill') {
     player.skillReady = false; playerChoice = 'attack';
     logMsg += `<span class="text-skill">🌟 Вы применяете "${CLASSES[player.classId].activeName}"!</span><br>`;
@@ -79,7 +110,6 @@ function playTurn(playerChoice) {
     if (bot.classId === 'priest') bot.hotTurnsLeft = 2;
   }
 
-  // 4. Пассивные баффы перед броском
   let pBonus = 0; let bBonus = 0;
   if (player.classId === 'warrior' && player.hp <= 6) { pBonus += 2; logMsg += `<span class="text-skill">🔥 Берсерк: Ваша атака +2!</span><br>`; }
   if (bot.classId === 'warrior' && bot.hp <= 6) { bBonus += 2; logMsg += `<span class="text-skill">🔥 Берсерк: Атака врага +2!</span><br>`; }
@@ -90,29 +120,24 @@ function playTurn(playerChoice) {
   pAttack += pBonus; bAttack += bBonus;
   if (pDouble) pAttack *= 2; if (bDouble) bAttack *= 2;
 
-  // 5. Матрица боя и Реактивные навыки
   if (playerChoice === 'attack' && botChoice === 'attack') {
     let pDmgTaken = bAttack; let bDmgTaken = pAttack;
-    
-    // Уклонение Убийцы
     if (player.classId === 'assassin' && player.hp <= 4 && !player.usedInstinct) { pDmgTaken = 0; player.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт выживания: Вы уклонились!</span><br>`; }
     if (bot.classId === 'assassin' && bot.hp <= 4 && !bot.usedInstinct) { bDmgTaken = 0; bot.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт выживания: Враг уклонился!</span><br>`; }
-
     if (pInvul) pDmgTaken = 0; if (bInvul) bDmgTaken = 0;
 
     logMsg += `⚔️ Встречная атака! Вы бьете (${pAttack}), Враг бьет (${bAttack}).<br>`;
     if (bDmgTaken > 0) logMsg += applyDamage(bot, player, bDmgTaken, "Враг");
-    if (pDmgTaken > 0) logMsg += applyDamage(player, bot, pDmgTaken, "Вы");
+    if (pDmgTaken > 0) logMsg += applyDamage(player, bot, pDmgTaken, REAL_PLAYER_NAME);
 
   } else if (playerChoice === 'defend' && botChoice === 'defend') {
     logMsg += `<span class="text-block">🛡️ Оба приготовились к защите. Никто не получил урона.</span>`;
   } else if (playerChoice === 'attack' && botChoice === 'defend') {
-    logMsg += resolveCombat(player, bot, pAttack, (pIgnore ? 0 : bBlock), "Вы", "Враг", pIgnore, pDouble);
+    logMsg += resolveCombat(player, bot, pAttack, (pIgnore ? 0 : bBlock), REAL_PLAYER_NAME, "Враг", pIgnore, pDouble);
   } else if (playerChoice === 'defend' && botChoice === 'attack') {
-    logMsg += resolveCombat(bot, player, bAttack, (bIgnore ? 0 : pBlock), "Враг", "Вы", bIgnore, bDouble);
+    logMsg += resolveCombat(bot, player, bAttack, (bIgnore ? 0 : pBlock), "Враг", REAL_PLAYER_NAME, bIgnore, bDouble);
   }
 
-  // 6. Пост-ходовые эффекты (Боевой раж)
   if (player.classId === 'warrior' && player.hp > 0 && player.hp < 10) { player.hp += 1; logMsg += `<span class="text-heal">🩸 Боевой раж восстанавливает вам 1 ХП.</span><br>`; }
   if (bot.classId === 'warrior' && bot.hp > 0 && bot.hp < 10) { bot.hp += 1; logMsg += `<span class="text-dmg">🩸 Боевой раж восстанавливает врагу 1 ХП.</span><br>`; }
 
@@ -126,10 +151,8 @@ function processHoT(healer, target, hName, tName) {
     healer.hp += 2; if (healer.hp > healer.maxHp) healer.hp = healer.maxHp;
     healer.hotTurnsLeft--;
     msg += `💖 <i>${hName} лечит <span class="text-heal">2 ХП</span> от Силы жизни.</i><br>`;
-    
     if (healer.classId === 'priest') {
-      target.hp -= 2;
-      msg += `🌟 Обжигающий свет наносит ${tName} <span class="text-dmg">2 урона</span>!<br>`;
+      target.hp -= 2; msg += `🌟 Обжигающий свет наносит ${tName} <span class="text-dmg">2 урона</span>!<br>`;
     }
   }
   return msg;
@@ -137,11 +160,9 @@ function processHoT(healer, target, hName, tName) {
 
 function resolveCombat(atkChar, defChar, atkRoll, defBlock, atkName, defName, ignoredBlock, doubleDmg) {
   let res = `🗡️ ${atkName} бьет (${atkRoll}), блок: ${ignoredBlock ? '0 (Пробит)' : defBlock}.<br>`;
-  
   if (defChar.classId === 'assassin' && defChar.hp <= 4 && !defChar.usedInstinct) {
     defChar.usedInstinct = true; return res + `<span class="text-info">🌑 Инстинкт выживания: ${defName} уклоняется от атаки!</span>`;
   }
-
   if (atkRoll > defBlock || ignoredBlock) {
     let dmg = ignoredBlock ? atkRoll : (atkRoll - defBlock);
     res += applyDamage(defChar, atkChar, dmg, defName);
@@ -166,7 +187,6 @@ function applyDamage(target, attacker, dmg, tName) {
   let res = `💥 ${tName} получает <span class="text-dmg">${dmg} урона</span>.<br>`;
   target.hp -= dmg; attacker.stats.dmgDealt += dmg;
   if (attacker.classId === 'assassin') attacker.pursuitDmg += dmg;
-  
   if (target.classId === 'priest' && target.hp <= 8 && target.hp > 0 && !target.usedPrayer) {
     target.usedPrayer = true; let heal = Math.min(6, target.maxHp - target.hp); target.hp += heal;
     res += `🙏 <span class="text-heal">Молитва восстанавливает ${tName} ${heal} ХП!</span><br>`;
@@ -192,7 +212,7 @@ function checkSkills(char, target, name) {
     char.skillReady = true; char.stats[info.reqType] = 0;
   }
   if (char.classId === 'assassin' && char.pursuitDmg >= 13 && !target.poisoned) {
-    target.poisoned = true; logToScreen(`<span class="text-info">☠️ Преследование! ${name === "Вы" ? "Враг отравлен" : "Вы отравлены"}!</span>`);
+    target.poisoned = true; logToScreen(`<span class="text-info">☠️ Преследование! ${name === REAL_PLAYER_NAME ? "Враг отравлен" : "Вы отравлены"}!</span>`);
   }
 }
 
@@ -205,7 +225,6 @@ function buildSkillHtml(char) {
       <div class="skill-progress-text">${char.skillReady ? 'ГОТОВ' : `${char.stats[info.reqType]}/${info.reqAmt}`}</div>
     </div>
   `;
-  
   let p1State = "Активен"; let p2State = "Активен";
   if (char.classId === 'warrior') { p1State = char.hp <= 6 ? "ОНЛАЙН (+2)" : "ХП ≤ 6"; p2State = char.hp < 10 ? "ОНЛАЙН" : "ХП < 10"; }
   if (char.classId === 'assassin') { p1State = char.usedInstinct ? "ИСЧЕРПАН" : (char.hp <= 4 ? "ГОТОВ" : "ХП ≤ 4"); p2State = char.poisoned ? "ОТРАВЛЕНО" : `${char.pursuitDmg}/13`; }
@@ -219,8 +238,16 @@ function buildSkillHtml(char) {
 
 function updateScreen() {
   if (player.hp < 0) player.hp = 0; if (bot.hp < 0) bot.hp = 0;
-  document.getElementById("ui-player-name").innerText = `Вы (${player.className})`;
+  
+  let pRank = getRank(playerLp);
+  let bRank = getRank(bot.lp);
+
+  document.getElementById("ui-player-name").innerText = `${REAL_PLAYER_NAME} (${player.className})`;
+  document.getElementById("ui-player-rank").innerText = `${pRank.icon} ${playerLp} LP`;
+  
   document.getElementById("ui-bot-name").innerText = `Враг (${bot.className})`;
+  document.getElementById("ui-bot-rank").innerText = `${bRank.icon} ${bot.lp} LP`;
+
   document.getElementById("ui-player-hp-fill").style.width = (player.hp / player.maxHp) * 100 + "%";
   document.getElementById("ui-player-hp-text").innerText = `${player.hp} / ${player.maxHp} ХП`;
   document.getElementById("ui-bot-hp-fill").style.width = (bot.hp / bot.maxHp) * 100 + "%";
@@ -243,8 +270,21 @@ function checkWinner() {
   if (player.hp <= 0 || bot.hp <= 0) {
     gameIsOver = true; document.getElementById("btn-attack").style.display = "none"; document.getElementById("btn-defend").style.display = "none";
     document.getElementById("btn-skill").style.display = "none"; document.getElementById("btn-return").style.display = "block";
-    if (player.hp <= 0 && bot.hp <= 0) logToScreen("<span class='text-skill'>💀 НИЧЬЯ! Оба бойца пали на арене.</span>");
-    else if (player.hp <= 0) logToScreen("<span class='text-dmg'>💀 ВЫ ПРОИГРАЛИ! Враг оказался сильнее.</span>");
-    else logToScreen("<span class='text-heal'>🏆 ВЫ ПОБЕДИЛИ! Славная битва.</span>");
+    
+    let endMsg = "";
+    if (player.hp <= 0 && bot.hp <= 0) {
+      endMsg = "<span class='text-skill'>💀 НИЧЬЯ! Оба бойца пали на арене. (LP не изменились)</span>";
+    } else if (player.hp <= 0) {
+      playerLp = Math.max(0, playerLp - 15);
+      endMsg = `<span class='text-dmg'>💀 ВЫ ПРОИГРАЛИ!</span> <span class="lp-loss">(-15 LP)</span>`;
+    } else {
+      playerLp += 25;
+      endMsg = `<span class='text-heal'>🏆 ВЫ ПОБЕДИЛИ!</span> <span class="lp-gain">(+25 LP)</span>`;
+      tg.HapticFeedback.notificationOccurred('success'); // Телеграм виброотклик!
+    }
+    
+    // Сохраняем в память устройства
+    localStorage.setItem('middleEarthLp', playerLp);
+    logToScreen(endMsg);
   }
-        }
+}
