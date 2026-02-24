@@ -14,6 +14,7 @@
     <button class="nav-tab" onclick="switchTab(this, 'tab-bag')">🎒 Сумка</button>
     <button class="nav-tab" onclick="switchTab(this, 'tab-arenas')">🏟️ Арены</button>
     <button class="nav-tab" onclick="switchTab(this, 'tab-shop')">🏪 Магазин</button>
+    <button class="nav-tab" onclick="switchTab(this, 'tab-leaderboard')">🏆 Топ</button> </div>
   </div>
 
   <div id="tab-battle" class="tab-content active">
@@ -85,6 +86,11 @@
     <h2>Торговый квартал</h2>
     <div class="imperial-count">Ваш баланс: <span id="shop-imperial-amount" style="color:#fbbf24">0</span> 🪙</div>
     <div id="shop-content"></div>
+  </div>
+
+  <div id="tab-leaderboard" class="tab-content">
+    <h2>Глобальный Топ 10</h2>
+    <div id="leaderboard-content" style="margin-top: 15px;"></div>
   </div>
 
   <div id="item-modal" class="modal">
