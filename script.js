@@ -3,15 +3,18 @@ const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : 
 if (tg && tg.expand) tg.expand();
 const REAL_PLAYER_NAME = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user.first_name : "Вы";
 
+const BOT_NAMES = ["Nagibator228", "0xVortex", "SlavaCritam", "Gromila", "xXShadowXx", "DedNaRage", "Zerkon", "Blysk", "Krovnik", "HealPlzBro", "TankBezMozgov", "1337Reaper", "Morozko", "CtrlAltDefeat", "SibirWolf", "TryHarder", "VanyokPro", "NoScope404", "PyatkaCrit", "KRAKEN99", "BabkaNaBafoh", "UltraDPS", "ZloyKot", "AfkLegend", "RushB", "ShizaMage", "777Storm", "OrelBezKryil", "DarkKolya", "MetaSlave", "VodkaBuff", "Rekrut", "Xx_NeKrO_xX", "Leshiy", "1HPHero", "ToxicRain", "BorodaPlay", "ImbaOrNot", "DedInside", "BaikalBlade", "NerfMePls", "Zhivoy", "404Skill", "GigaChadRU", "Molotok", "SosedSverhu", "KritVSpinu", "Shadow228", "PupsikWar", "HardbassGod"];
+
 // БАЗА ДАННЫХ И МИГРАЦИЯ
 let gameData = { 
   lp: 0, imperials: 0, inventory: [], maxInventory: 6, hugeChestPity: 0, currentClass: 'warrior',
+  leaderboard: [], // Сохранение Топа
   equip: { 
     warrior: { head: null, body: null, arms: null, legs: null },
     assassin: { head: null, body: null, arms: null, legs: null },
     guardian: { head: null, body: null, arms: null, legs: null },
     priest: { head: null, body: null, arms: null, legs: null },
-    darkknight: { head: null, body: null, arms: null, legs: null } // НОВЫЙ КЛАСС
+    darkknight: { head: null, body: null, arms: null, legs: null }
   }
 };
 
@@ -24,8 +27,15 @@ try {
     if (saved.equip && saved.equip.warrior) { gameData.equip = saved.equip; } 
     else if (saved.equip) { gameData.equip.warrior = saved.equip; }
     if (!gameData.equip.darkknight) gameData.equip.darkknight = { head: null, body: null, arms: null, legs: null };
+    if (saved.leaderboard && saved.leaderboard.length === 50) gameData.leaderboard = saved.leaderboard;
   }
 } catch (e) {}
+
+// НЮАНС: Инициализация ботов. Раскидываем им LP вокруг твоих очков, чтобы была конкуренция
+if (!gameData.leaderboard || gameData.leaderboard.length === 0) {
+    let maxLpForBots = Math.max(500, gameData.lp + 300); // Кто-то будет выше тебя!
+    gameData.leaderboard = BOT_NAMES.map(name => ({ name: name, lp: Math.floor(Math.random() * maxLpForBots) }));
+}
 
 function saveData() { localStorage.setItem('middleEarthData', JSON.stringify(gameData)); }
 
@@ -97,6 +107,41 @@ function switchTab(btn, tabId) {
   if(tabId === 'tab-bag') updateBagTab();
   if(tabId === 'tab-arenas') renderArenas();
   if(tabId === 'tab-shop') renderShop();
+  if(tabId === 'tab-leaderboard') renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  // Собираем всех ботов + игрока в один массив
+  let allPlayers = [...gameData.leaderboard, { name: REAL_PLAYER_NAME, lp: gameData.lp, isPlayer: true }];
+  allPlayers.sort((a, b) => b.lp - a.lp); // Сортируем по очкам
+
+  let html = '';
+  let playerRank = -1;
+  for (let i = 0; i < allPlayers.length; i++) { if (allPlayers[i].isPlayer) playerRank = i + 1; }
+
+  // Отрисовываем Топ-10
+  for (let i = 0; i < 10 && i < allPlayers.length; i++) {
+      let p = allPlayers[i];
+      let rankIcon = (i===0)?'🥇':(i===1)?'🥈':(i===2)?'🥉':`${i+1}`;
+      let rowClass = p.isPlayer ? "lb-item lb-player" : "lb-item";
+      html += `<div class="${rowClass}"><div class="lb-rank">${rankIcon}</div><div class="lb-name">${p.name}</div><div class="lb-lp">${p.lp} LP</div></div>`;
+  }
+
+  // Если игрок не попал в Топ-10, показываем его место в самом низу
+  if (playerRank > 10) {
+      html += `<div class="lb-divider">...</div>`;
+      html += `<div class="lb-item lb-player"><div class="lb-rank">${playerRank}</div><div class="lb-name">${REAL_PLAYER_NAME}</div><div class="lb-lp">${gameData.lp} LP</div></div>`;
+  }
+  document.getElementById("leaderboard-content").innerHTML = html;
+}
+
+// НЮАНС: Симуляция 50 боёв в фоне!
+function simulateBots() {
+  gameData.leaderboard.forEach(b => {
+      let isWin = Math.random() < 0.5;
+      let change = Math.floor(Math.random() * 6) + 10; // От 10 до 15 очков
+      if (isWin) b.lp += change; else b.lp = Math.max(0, b.lp - change);
+  });
 }
 
 function updateMenuProfile() {
@@ -340,7 +385,7 @@ function renderShop() {
 
 let player = {}; let bot = {}; let gameIsOver = false;
 let turnTimerId = null; let turnTimeLeft = 4000; const TURN_DURATION = 4000;
-let queuedPlayerAction = 'skip'; let isTurnActive = false;
+let queuedPlayerAction = 'skip'; let isTurnActive = false; let currentBotName = "Player";
 
 function getEquipHp(eq) { return Object.values(eq).reduce((sum, item) => sum + (item ? item.hp : 0), 0); }
 function parsePerks(eq) {
@@ -406,6 +451,10 @@ function startGame() {
   let botLp = Math.max(0, gameData.lp + Math.floor(Math.random() * 41) - 20);
   bot = initChar(keys[Math.floor(Math.random() * keys.length)], true, botLp);
   gameIsOver = false;
+  
+  // Генерируем анонимное имя для текущего боя
+  currentBotName = "Player " + (Math.floor(Math.random() * 999) + 1);
+  
   let currentArena = getArena(gameData.lp); let pRank = getRank(player.lp); let bRank = getRank(bot.lp);              
   document.getElementById("battle-arena").className = "arena " + currentArena.arenaClass;
   document.getElementById("player-card").className = "character " + pRank.borderClass;
@@ -674,7 +723,7 @@ function updateScreen() {
   document.getElementById("ui-player-name").className = "char-name " + (pRank.textClass || "");
   document.getElementById("ui-player-rank").innerText = `${pRank.icon} ${gameData.lp} LP`;
   
-  document.getElementById("ui-bot-name").innerText = `Враг (${bot.className})`;
+  document.getElementById("ui-bot-name").innerText = `${currentBotName} (${bot.className})`;
   document.getElementById("ui-bot-name").className = "char-name " + (bRank.textClass || "");
   document.getElementById("ui-bot-rank").innerText = `${bRank.icon} ${bot.lp} LP`;
   
@@ -707,6 +756,9 @@ function checkWinner() {
     document.getElementById("btn-attack").style.display = "none"; document.getElementById("btn-defend").style.display = "none";
     document.getElementById("btn-skill").style.display = "none"; document.getElementById("btn-immortal").style.display = "none";
     document.getElementById("btn-return").style.display = "block";
+    
+    // БОТЫ СИМУЛИРУЮТ СВОИ БОИ
+    simulateBots();
     
     let endMsg = "";
     if (player.hp <= 0 && bot.hp <= 0) { endMsg = "<span class='text-skill'>💀 НИЧЬЯ! (LP не изменились)</span>"; }
