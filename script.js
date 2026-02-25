@@ -714,9 +714,14 @@ function resolveCombat(atkC, defC, aRoll, dBlock, aName, dName, ignBlock, isSkil
   if (defC.classId === 'assassin' && defC.hp <= 4 && !defC.usedInstinct) { defC.usedInstinct = true; return res + `<span class="text-info">🌑 Инстинкт: ${dName} уклоняется!</span>`; }
   if (Math.random() < defC.eqP.dodge) return res + `<span class="text-info">👢 Сапоги: ${dName} уклоняется!</span>`;
 
-  // ФИКС СТРАЖА: Считаем только реально заблокированный урон (не больше, чем была сама атака)
+  // ИСПРАВЛЕНИЕ: Универсальный подсчет блоков для Оплота и Возмездия
   let actualBlocked = ignBlock ? 0 : Math.min(aRoll, dBlock);
   defC.stats.dmgBlocked += actualBlocked;
+  
+  if (defC.classId === 'guardian') { 
+      defC.retBlocks += actualBlocked; 
+      while(defC.retBlocks >= 2 && defC.retBonus < 5) { defC.retBlocks -= 2; defC.retBonus += 1; } 
+  }
 
   if (aRoll > dBlock || ignBlock) {
     let dmg = ignBlock ? aRoll : (aRoll - dBlock);
@@ -725,7 +730,6 @@ function resolveCombat(atkC, defC, aRoll, dBlock, aName, dName, ignBlock, isSkil
   } else if (aRoll === dBlock) {
     res += `<span class="text-block">Идеальный блок!</span><br>`;
     if (defC.classId === 'guardian') { res += applyDamage(atkC, defC, 1, aName, false); res += `🗡️ <span class="text-info">Контратака!</span><br>`; }
-    if (defC.classId === 'guardian') { defC.retBlocks += actualBlocked; while(defC.retBlocks >= 2 && defC.retBonus < 5) { defC.retBlocks -= 2; defC.retBonus += 1; } }
   } else {
     let heal = dBlock - aRoll + defC.eqP.healB;
     if (defC.canHeal) {
@@ -733,7 +737,6 @@ function resolveCombat(atkC, defC, aRoll, dBlock, aName, dName, ignBlock, isSkil
         res += `✨ Избыточный блок! ${dName} лечит <span class="text-heal">${heal} ХП</span>.<br>`;
     } else { res += `✨ Избыточный блок! Но ${dName} не может исцеляться.<br>`; }
     if (defC.classId === 'guardian') { res += applyDamage(atkC, defC, 1, aName, false); res += `🗡️ <span class="text-info">Контратака!</span><br>`; }
-    if (defC.classId === 'guardian') { defC.retBlocks += actualBlocked; while(defC.retBlocks >= 2 && defC.retBonus < 5) { defC.retBlocks -= 2; defC.retBonus += 1; } }
     if (defC.classId === 'priest') { res += applyDamage(atkC, defC, heal, aName, false); res += `🌟 Свет наносит <span class="text-dmg">${heal} урона</span>!<br>`; }
   }
   return res;
@@ -791,7 +794,7 @@ function buildSkillHtml(char) {
       let currentDmg = Math.min(char.pursuitDmg, 13);
       p2State = char.poisoned ? "АКТИВНО" : `${currentDmg}/13`; 
   }
-  if (char.classId === 'guardian') { p1State = "Авто (Блок)"; p2State = `Бонус: +${char.retBonus}`; }
+  if (char.classId === 'guardian') { p1State = "Авто (Блок)"; p2State = `${char.retBlocks}/2 | Бонус: +${char.retBonus}`; }
   if (char.classId === 'priest') { p1State = char.usedPrayer ? "ИСЧЕРПАН" : (char.hp <= 8 ? "ГОТОВ" : "ХП ≤ 8"); p2State = "Авто (Лечение)"; }
   if (char.classId === 'darkknight') { p1State = char.courageThresholdDown ? "ХП ≤ 4 (Порог 1)" : "ОНЛАЙН (Порог 2)"; p2State = char.usedImmortality ? (char.immortalTurns > 0 ? "АКТИВНО" : "ИСЧЕРПАН") : "ГОТОВ"; }
 
