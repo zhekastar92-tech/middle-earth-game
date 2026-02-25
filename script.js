@@ -64,22 +64,19 @@ const ARENAS = [
 // === УМНАЯ СИСТЕМА РАНГОВ (Универсальный Гейткипинг) ===
 function getRank(lp) { 
     let rank = RANKS.find(r => lp <= r.maxLp) || RANKS[RANKS.length - 1]; 
-    
-    // Правило работает для ЛЮБОГО значения LP (твоего или бота)
     if (rank.name === "Феникс" && gameData.leaderboard && gameData.leaderboard.length >= 50) {
-        // Берем очки 50-го места
         let botLps = gameData.leaderboard.map(b => b.lp).sort((a, b) => b - a);
-        
-        // Вычисляем точный порог входа в клуб Фениксов
         let threshold = botLps[49] - 500;
-        
-        // Если переданное LP не дотягивает до порога — безжалостно понижаем до Владыки
         if (lp < threshold) {
             return RANKS[RANKS.length - 2]; 
         }
     }
     return rank; 
 }
+
+// ВОТ ЭТА СТРОЧКА ПОТЕРЯЛАСЬ И СЛОМАЛА МЕНЮ:
+function getArena(lp) { return ARENAS.find(a => lp <= a.maxLp) || ARENAS[ARENAS.length - 1]; }
+
 function getArenaDrops(lp) {
   if (lp <= 300) return { common: 0.10, uncommon: 0.02, rare: 0, epic: 0 }; 
   if (lp <= 600) return { common: 0.25, uncommon: 0.10, rare: 0.02, epic: 0 }; 
@@ -174,10 +171,59 @@ function renderLeaderboard() {
               displayRank = 50 + Math.floor(gap / 10) + randomJitter;
               if (displayRank > 100) displayRank = 100;
           }
+function renderLeaderboard() {
+  // Собираем всех ботов + игрока в один массив
+  let allPlayers = [...gameData.leaderboard, { name: REAL_PLAYER_NAME, lp: gameData.lp, isPlayer: true }];
+  allPlayers.sort((a, b) => b.lp - a.lp); // Сортируем по очкам
+
+  let html = '';
+  let playerRank = -1;
+  for (let i = 0; i < allPlayers.length; i++) { if (allPlayers[i].isPlayer) playerRank = i + 1; }
+
+  // Отрисовываем Топ-10 
+  for (let i = 0; i < 10 && i < allPlayers.length; i++) {
+      let p = allPlayers[i];
+      let rankIcon = (i===0)?'🥇':(i===1)?'🥈':(i===2)?'🥉':`${i+1}`;
+      let pRank = getRank(p.lp);
+      
+      let nameClass = pRank.textClass ? `profile-name ${pRank.textClass}` : `profile-name`;
+      let rankClass = pRank.textClass ? `profile-rank ${pRank.textClass}` : `profile-rank`; // Свечение для текста
+      
+      let borderStyle = p.isPlayer ? "border: 2px solid #e11d48; background: rgba(225, 29, 72, 0.2); box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);" : "";
+      
+      html += `
+      <div class="profile-header" style="margin-bottom: 10px; ${borderStyle}">
+          <div style="display:flex; align-items:center; gap: 15px;">
+              <div style="font-size: 20px; font-weight: 900; color: #fbbf24; width: 30px; text-align: center;">${rankIcon}</div>
+              <div style="text-align: left;">
+                  <div class="${nameClass}">👤 ${p.name}</div>
+                  <div class="${rankClass}">${pRank.icon} ${pRank.name} | ${p.lp} LP</div>
+              </div>
+          </div>
+      </div>`;
+  }
+
+  // Если игрок не попал в Топ-10, показываем его внизу
+  if (playerRank > 10) {
+      let displayRank = playerRank;
+      
+      // ИЛЛЮЗИЯ СОТНИ: Если мы ниже 50-го места, вычисляем виртуальный ранг
+      if (playerRank === 51) {
+          let lowestBotLp = allPlayers[49].lp; 
+          let gap = lowestBotLp - gameData.lp;
+          
+          if (gap > 500) {
+              displayRank = "100+";
+          } else {
+              let randomJitter = Math.floor(Math.random() * 4); 
+              displayRank = 50 + Math.floor(gap / 10) + randomJitter;
+              if (displayRank > 100) displayRank = 100;
+          }
       }
 
       let pRank = getRank(gameData.lp);
       let nameClass = pRank.textClass ? `profile-name ${pRank.textClass}` : `profile-name`;
+      let rankClass = pRank.textClass ? `profile-rank ${pRank.textClass}` : `profile-rank`; // Свечение для текста
       
       html += `<div style="text-align: center; color: #94a3b8; font-weight: bold; margin: 15px 0; font-size: 20px;">...</div>`;
       html += `
@@ -186,13 +232,13 @@ function renderLeaderboard() {
               <div style="font-size: 20px; font-weight: 900; color: #fbbf24; min-width: 30px; text-align: center;">${displayRank}</div>
               <div style="text-align: left;">
                   <div class="${nameClass}">👤 ${REAL_PLAYER_NAME}</div>
-                  <div class="profile-rank">${pRank.icon} ${pRank.name} | ${gameData.lp} LP</div>
+                  <div class="${rankClass}">${pRank.icon} ${pRank.name} | ${gameData.lp} LP</div>
               </div>
           </div>
       </div>`;
   }
   document.getElementById("leaderboard-content").innerHTML = html;
-}
+                                                                            }
 
 // НЮАНС: Симуляция 50 боёв в фоне!
 function simulateBots() {
@@ -206,7 +252,8 @@ function simulateBots() {
 function updateMenuProfile() {
   let rank = getRank(gameData.lp);
   let nameClass = rank.textClass ? ` class="profile-name ${rank.textClass}"` : ` class="profile-name"`;
-  document.getElementById("menu-profile").innerHTML = `<div${nameClass}>👤 ${REAL_PLAYER_NAME}</div><div class="profile-rank">${rank.icon} ${rank.name} | ${gameData.lp} LP</div>`;
+  let rankClass = rank.textClass ? ` class="profile-rank ${rank.textClass}"` : ` class="profile-rank"`; // <-- Свечение для текста
+  document.getElementById("menu-profile").innerHTML = `<div${nameClass}>👤 ${REAL_PLAYER_NAME}</div><div${rankClass}>${rank.icon} ${rank.name} | ${gameData.lp} LP</div>`;
 }
 
 function renderMainMenu() {
