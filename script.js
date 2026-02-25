@@ -189,7 +189,7 @@ function renderLeaderboard() {
   }
   document.getElementById("leaderboard-content").innerHTML = html;
 }
-                                                                            }
+                                                                        
 
 // НЮАНС: Симуляция 50 боёв в фоне!
 function simulateBots() {
