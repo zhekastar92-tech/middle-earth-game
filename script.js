@@ -46,9 +46,9 @@ const RANKS = [
   { name: "Золото", icon: "🟡", maxLp: 1400, borderClass: "border-gold", textClass: "" },
   { name: "Изумруд", icon: "❇️", maxLp: 1800, borderClass: "border-emerald", textClass: "" },
   { name: "Алмаз", icon: "💎", maxLp: 2400, borderClass: "border-diamond", textClass: "" },
-  { name: "Мастер", icon: "📀", maxLp: 3000, borderClass: "border-master", textClass: "text-master" },
-  { name: "Грандмастер", icon: "💿", maxLp: 3800, borderClass: "border-grandmaster", textClass: "text-grandmaster" },
-  { name: "Владыка", icon: "👹", maxLp: 5000, borderClass: "border-overlord", textClass: "text-overlord" },
+  { name: "Мастер", icon: "❄️", maxLp: 3000, borderClass: "border-master", textClass: "text-master" },
+  { name: "Грандмастер", icon: "🌟", maxLp: 3800, borderClass: "border-grandmaster", textClass: "text-grandmaster" },
+  { name: "Владыка", icon: "🔱", maxLp: 5000, borderClass: "border-overlord", textClass: "text-overlord" },
   { name: "Феникс", icon: "🐦‍🔥", maxLp: 99999, borderClass: "border-phoenix", textClass: "text-phoenix" }
 ];
 
