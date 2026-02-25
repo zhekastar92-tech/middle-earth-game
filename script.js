@@ -42,6 +42,25 @@ Object.keys(CLASSES).forEach(cls => {
     }
 });
 
+// РЕТРОАКТИВНОЕ ПЕРЕИМЕНОВАНИЕ: Даем старым предметам крутые имена
+function migrateItemNames() {
+    const updateName = (item) => {
+        if (!item) return;
+        let oldNamePattern = `${RARITY_NAMES[item.rarity]} ${SLOT_NAMES[item.slot]}`;
+        // Если предмет имеет скучное стандартное имя, переименовываем его
+        if (item.name === oldNamePattern) {
+            item.name = generateItemName(item.rarity, item.slot, !!item.perk, !!item.unique, false);
+        }
+    };
+    if (gameData.inventory) gameData.inventory.forEach(updateName);
+    if (gameData.equip) {
+        Object.values(gameData.equip).forEach(classEq => {
+            if (classEq) { updateName(classEq.head); updateName(classEq.body); updateName(classEq.arms); updateName(classEq.legs); }
+        });
+    }
+}
+migrateItemNames();
+
 // Принудительно обновляем ботов до 7000-8000 LP (даже если они уже были созданы в старом сохранении)
 let needsLbReset = !gameData.leaderboard || gameData.leaderboard.length === 0 || gameData.leaderboard[0].lp < 5000;
 if (needsLbReset) {
@@ -290,19 +309,35 @@ function generateItem(rarity, forceSlot = null, forceUnique = false) {
   const slots = ['head', 'body', 'arms', 'legs'];
   const slot = forceSlot ? forceSlot : slots[Math.floor(Math.random() * slots.length)];
   
-  gameData.nextItemId++; // Надежный счетчик
-  // Добавлено поле classId
+  gameData.nextItemId++; 
   let item = { id: gameData.nextItemId, classId: null, rarity: rarity, slot: slot, hp: 0, perk: null, unique: null }; 
+  let isRareType2 = false; // Флажок для второго типа Редких
   
-  if (rarity === 'common') { item.hp = Math.floor(Math.random() * 2) + 1; } 
-  else if (rarity === 'uncommon') { item.hp = Math.floor(Math.random() * 2) + 1; if (Math.random() < 0.1) item.perk = generatePerk(slot, 1, 1, 1); } 
-  else if (rarity === 'rare') { item.hp = Math.floor(Math.random() * 2) + 2; if (Math.random() < 0.1) item.perk = generatePerk(slot, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1); } 
+  if (rarity === 'common') { 
+      item.hp = Math.floor(Math.random() * 2) + 1; 
+  } 
+  else if (rarity === 'uncommon') { 
+      item.hp = Math.floor(Math.random() * 2) + 1; 
+      if (Math.random() < 0.1) item.perk = generatePerk(slot, 1, 1, 1); 
+  } 
+  else if (rarity === 'rare') { 
+      item.hp = Math.floor(Math.random() * 2) + 2; 
+      // РАЗДЕЛЕНИЕ НА 2 ТИПА: 25% шанс на Type 2 (100% перк), 75% шанс на Type 1 (10% перк)
+      if (Math.random() < 0.25) {
+          isRareType2 = true;
+          item.perk = generatePerk(slot, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1);
+      } else {
+          if (Math.random() < 0.1) item.perk = generatePerk(slot, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1); 
+      }
+  } 
   else if (rarity === 'epic') { 
     item.hp = Math.floor(Math.random() * 3) + 3; 
     item.perk = generatePerk(slot, Math.floor(Math.random()*3)+2, Math.floor(Math.random()*3)+2, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+2); 
     if (forceUnique || Math.random() < 0.02) item.unique = generateUnique(slot); 
   }
-  item.name = `${RARITY_NAMES[rarity]} ${SLOT_NAMES[slot]}`;
+  
+  // Вызываем наш крутой генератор имён
+  item.name = generateItemName(rarity, slot, !!item.perk, !!item.unique, isRareType2);
   return item;
 }
 
@@ -318,6 +353,63 @@ function generateUnique(slot) {
   if (slot === 'body') return { type: 'blockBonus', val: 1, desc: `[УНИК] +1 ко всем блокам.` };
   if (slot === 'arms') return { type: 'ignoreBlock', val: 1, desc: `[УНИК] Игнорирует 1 ед. блока врага.` };
   if (slot === 'legs') return { type: 'dodge', val: 0.15, desc: `[УНИК] 15% шанс избежать атаки.` };
+}
+
+// === ЛИНГВИСТИЧЕСКИЙ ДВИЖОК СКЛОНЕНИЙ ===
+function getPrefix(word, slot) {
+    let f = word, p = word;
+    if (word.endsWith("ый")) { f = word.slice(0, -2) + "ая"; p = word.slice(0, -2) + "ые"; }
+    else if (word.endsWith("ий")) {
+        // Правило русского языка: после шипящих и Г,К,Х пишется "ая/ие" (Обжигающий -> Обжигающая), иначе "яя/ие" (Древний -> Древняя)
+        if (word.match(/[гкхжшщч]ий$/)) { f = word.slice(0, -2) + "ая"; p = word.slice(0, -2) + "ие"; }
+        else { f = word.slice(0, -2) + "яя"; p = word.slice(0, -2) + "ие"; }
+    }
+    else if (word.endsWith("ой")) { f = word.slice(0, -2) + "ая"; p = word.slice(0, -2) + "ые"; }
+
+    if (slot === 'body') return f;
+    if (slot === 'arms' || slot === 'legs') return p;
+    return word; // Шлем (Мужской род)
+}
+
+// === УМНАЯ ГЕНЕРАЦИЯ ИМЁН ПРЕДМЕТОВ ===
+function generateItemName(rarity, slot, hasPerk, hasUnique, isRareType2 = false, dungeonName = null) {
+    if (dungeonName) return dungeonName; // Задел на будущее (данжи)
+
+    const slotName = SLOT_NAMES[slot]; 
+    let prefixes = []; let suffixes = [];
+
+    if (rarity === 'common') {
+        prefixes = ["Грубый", "Старый", "Треснутый"];
+    } else if (rarity === 'uncommon') {
+        prefixes = ["Крепкий", "Усиленный", "Прочный", "Надёжный"];
+    } else if (rarity === 'rare') {
+        if (isRareType2) {
+            prefixes = ["Рунный", "Сумрачный", "Туманный", "Морозный", "Обжигающий", "Призрачный", "Громовой"];
+            suffixes = ["Теней", "Забвения", "Расплаты", "Скитальца", "Разлома", "Сокрушения"];
+        } else {
+            if (!hasPerk) {
+                prefixes = ["Тяжёлый", "Усиленный", "Закалённый", "Мощный"];
+            } else {
+                prefixes = ["Стальной", "Окованный", "Кристальный", "Нерушимый", "Каменный"];
+                suffixes = ["Стража", "Охотника", "Защиты", "Дозора", "Перевала", "Стойкости", "Бастиона"];
+            }
+        }
+    } else if (rarity === 'epic') {
+        if (!hasUnique) {
+            prefixes = ["Пылающий", "Сияющий", "Древний", "Избранный", "Тайный", "Яростный", "Расколотый"];
+            suffixes = ["Пепла", "Хаоса", "Порядка", "Заката", "Рассвета", "Титанов", "Лорда"];
+        } else {
+            prefixes = ["Небесный", "Звёздный", "Бессмертный", "Абсолютный"];
+            suffixes = ["Мироздания", "Вечности", "Губителя", "Погибели"];
+        }
+    } else if (rarity === 'legendary') { // Задел на будущее
+        prefixes = ["Легендарный", "Мифический", "Забытый"]; 
+    }
+
+    let prefix = prefixes.length > 0 ? getPrefix(prefixes[Math.floor(Math.random() * prefixes.length)], slot) : "";
+    let suffix = suffixes.length > 0 ? " " + suffixes[Math.floor(Math.random() * suffixes.length)] : "";
+
+    return `${prefix} ${slotName}${suffix}`.trim();
 }
 
 let selectedItem = null; let isEquipped = false;
