@@ -138,53 +138,6 @@ function renderLeaderboard() {
       let p = allPlayers[i];
       let rankIcon = (i===0)?'🥇':(i===1)?'🥈':(i===2)?'🥉':`${i+1}`;
       let pRank = getRank(p.lp);
-      let nameClass = pRank.textClass ? `profile-name ${pRank.textClass}` : `profile-name`;
-      
-      let borderStyle = p.isPlayer ? "border: 2px solid #e11d48; background: rgba(225, 29, 72, 0.2); box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);" : "";
-      
-      html += `
-      <div class="profile-header" style="margin-bottom: 10px; ${borderStyle}">
-          <div style="display:flex; align-items:center; gap: 15px;">
-              <div style="font-size: 20px; font-weight: 900; color: #fbbf24; width: 30px; text-align: center;">${rankIcon}</div>
-              <div style="text-align: left;">
-                  <div class="${nameClass}">👤 ${p.name}</div>
-                  <div class="profile-rank">${pRank.icon} ${pRank.name} | ${p.lp} LP</div>
-              </div>
-          </div>
-      </div>`;
-  }
-
-  // Если игрок не попал в Топ-10, показываем его внизу
-  if (playerRank > 10) {
-      let displayRank = playerRank;
-      
-      // ИЛЛЮЗИЯ СОТНИ: Если мы ниже 50-го места, вычисляем виртуальный ранг
-      if (playerRank === 51) {
-          let lowestBotLp = allPlayers[49].lp; // Берем очки 50-го бота
-          let gap = lowestBotLp - gameData.lp;
-          
-          if (gap > 500) {
-              displayRank = "100+";
-          } else {
-              // Каждые 10 очков разрыва = 1 позиция в рейтинге. Плюс случайный шум от 0 до 3
-              let randomJitter = Math.floor(Math.random() * 4); 
-              displayRank = 50 + Math.floor(gap / 10) + randomJitter;
-              if (displayRank > 100) displayRank = 100;
-          }
-function renderLeaderboard() {
-  // Собираем всех ботов + игрока в один массив
-  let allPlayers = [...gameData.leaderboard, { name: REAL_PLAYER_NAME, lp: gameData.lp, isPlayer: true }];
-  allPlayers.sort((a, b) => b.lp - a.lp); // Сортируем по очкам
-
-  let html = '';
-  let playerRank = -1;
-  for (let i = 0; i < allPlayers.length; i++) { if (allPlayers[i].isPlayer) playerRank = i + 1; }
-
-  // Отрисовываем Топ-10 
-  for (let i = 0; i < 10 && i < allPlayers.length; i++) {
-      let p = allPlayers[i];
-      let rankIcon = (i===0)?'🥇':(i===1)?'🥈':(i===2)?'🥉':`${i+1}`;
-      let pRank = getRank(p.lp);
       
       let nameClass = pRank.textClass ? `profile-name ${pRank.textClass}` : `profile-name`;
       let rankClass = pRank.textClass ? `profile-rank ${pRank.textClass}` : `profile-rank`; // Свечение для текста
