@@ -198,7 +198,7 @@ function renderLeaderboard() {
 function simulateBots() {
   gameData.leaderboard.forEach(b => {
       let isWin = Math.random() < 0.5;
-      let change = Math.floor(Math.random() * 6) + 10; // От 10 до 15 очков
+      let change = Math.floor(Math.random() * 6) + 5; // От 10 до 15 очков
       if (isWin) b.lp += change; else b.lp = Math.max(0, b.lp - change);
   });
 }
@@ -462,6 +462,10 @@ function renderShop() {
 let player = {}; let bot = {}; let gameIsOver = false;
 let turnTimerId = null; let turnTimeLeft = 4000; const TURN_DURATION = 4000;
 let queuedPlayerAction = 'skip'; let isTurnActive = false; let currentBotName = "Player";
+let turnCount = 1; // Счетчик ходов
+
+function getHitAdj(val) { return val >= 3 ? "мощный" : (val <= 1 ? "слабый" : "обычный"); }
+function getBlockAdj(val) { return val >= 3 ? "мощный" : (val <= 1 ? "слабый" : "обычный"); }
 
 function getEquipHp(eq) { return Object.values(eq).reduce((sum, item) => sum + (item ? item.hp : 0), 0); }
 function parsePerks(eq) {
@@ -537,7 +541,7 @@ function startGame() {
   const keys = Object.keys(CLASSES);
   let botLp = Math.max(0, gameData.lp + Math.floor(Math.random() * 41) - 20);
   bot = initChar(keys[Math.floor(Math.random() * keys.length)], true, botLp);
-  gameIsOver = false;
+  gameIsOver = false; turnCount = 1;
   
   // Генерируем анонимное имя для текущего боя
   currentBotName = "Player " + (Math.floor(Math.random() * 999) + 1);
@@ -558,11 +562,12 @@ function rollDice() { return Math.floor(Math.random() * 3) + 1; }
 
 function playTurn(playerChoice) {
   if (gameIsOver) return;
-  let logMsg = "";
-  
+  // РАЗДЕЛИТЕЛЬ ХОДОВ
+  let logMsg = `<div style="text-align:center; font-weight:900; color:#fbbf24; margin: 15px 0 10px 0; border-top: 1px solid #475569; padding-top: 10px;">━━━━━ Ход ${turnCount} ━━━━━</div>`;
+  turnCount++;
+
   if (playerChoice === 'skip') { logMsg += `<span class="text-block">⏳ Вы не успели сделать выбор и пропускаете ход!</span><br>`; }
 
-  // ИИ Бота: если бессмертен - бьет бессмертием
   let botChoice = bot.immortalTurns > 0 ? 'immortal' : (bot.skillReady ? 'skill' : (Math.random() < 0.5 ? 'attack' : 'defend'));
 
   let pAttack = 0, pBlock = 0, bAttack = 0, bBlock = 0;
@@ -571,7 +576,6 @@ function playTurn(playerChoice) {
   let pUsedActiveSkill = false, bUsedActiveSkill = false;
   let pBonus = 0, bBonus = 0;
 
-  // Бессмертие дает Блок 3 и Атаку
   if (playerChoice === 'immortal') { pAttack = rollDice(); pBlock = 3; pBonus += 1; } 
   else if (playerChoice !== 'skip') { pAttack = rollDice(); pBlock = rollDice(); }
   if (botChoice === 'immortal') { bAttack = rollDice(); bBlock = 3; bBonus += 1; } 
@@ -579,14 +583,14 @@ function playTurn(playerChoice) {
 
   if (playerChoice === 'skill') {
     player.skillReady = false; playerChoice = 'attack'; pUsedActiveSkill = true;
-    logMsg += `<span class="text-skill">🌟 Вы: "${CLASSES[player.classId].activeName}"!</span><br>`;
+    logMsg += `<span class="text-skill">🌟 ${REAL_PLAYER_NAME} применяет умение "${CLASSES[player.classId].activeName}"!</span><br>`;
     if (player.classId === 'warrior') pIgnore = true; if (player.classId === 'assassin') pDouble = true;
     if (player.classId === 'guardian') pInvul = true; if (player.classId === 'priest') player.hotTurnsLeft = 2;
     if (player.classId === 'darkknight') player.furyTurnsLeft = 3; 
   }
   if (botChoice === 'skill') {
     bot.skillReady = false; botChoice = 'attack'; bUsedActiveSkill = true;
-    logMsg += `<span class="text-skill">⚠️ Враг: "${CLASSES[bot.classId].activeName}"!</span><br>`;
+    logMsg += `<span class="text-skill">🌟 ${currentBotName} применяет умение "${CLASSES[bot.classId].activeName}"!</span><br>`;
     if (bot.classId === 'warrior') bIgnore = true; if (bot.classId === 'assassin') bDouble = true;
     if (bot.classId === 'guardian') bInvul = true; if (bot.classId === 'priest') bot.hotTurnsLeft = 2;
     if (bot.classId === 'darkknight') bot.furyTurnsLeft = 3;
@@ -599,12 +603,11 @@ function playTurn(playerChoice) {
   if (player.classId === 'guardian' && player.retBonus > 0 && playerChoice === 'attack' && !pInvul) { pBonus += player.retBonus; player.retBonus = 0; player.retBlocks = 0; }
   if (bot.classId === 'guardian' && bot.retBonus > 0 && botChoice === 'attack' && !bInvul) { bBonus += bot.retBonus; bot.retBonus = 0; bot.retBlocks = 0; }
 
-  // Бафф Тёмной ярости
   if (player.furyTurnsLeft > 0 && (playerChoice === 'attack' || playerChoice === 'immortal')) { pBonus += 1; logMsg += `<i class="text-info">🦇 Тёмная ярость: Урон +1</i><br>`; }
-  if (bot.furyTurnsLeft > 0 && (botChoice === 'attack' || botChoice === 'immortal')) { bBonus += 1; logMsg += `<i class="text-info">🦇 Тёмная ярость Врага: Урон +1</i><br>`; }
+  if (bot.furyTurnsLeft > 0 && (botChoice === 'attack' || botChoice === 'immortal')) { bBonus += 1; logMsg += `<i class="text-info">🦇 Тёмная ярость ${currentBotName}: Урон +1</i><br>`; }
 
   if (playerChoice === 'attack' && player.eqP.strikes > 0) { pBonus += player.eqP.dmgB; player.eqP.strikes--; logMsg += `<i class="text-info">🧤 Перчатки: Урон +${player.eqP.dmgB}</i><br>`; }
-  if (botChoice === 'attack' && bot.eqP.strikes > 0) { bBonus += bot.eqP.dmgB; bot.eqP.strikes--; logMsg += `<i class="text-info">🧤 Враг использует перчатки!</i><br>`; }
+  if (botChoice === 'attack' && bot.eqP.strikes > 0) { bBonus += bot.eqP.dmgB; bot.eqP.strikes--; logMsg += `<i class="text-info">🧤 ${currentBotName} использует перчатки!</i><br>`; }
 
   pAttack += pBonus; bAttack += bBonus;
   if (pDouble) pAttack *= 2; if (bDouble) bAttack *= 2;
@@ -616,77 +619,84 @@ function playTurn(playerChoice) {
 
   if (pAttacking && bAttacking) {
       if (playerChoice === 'immortal' && botChoice === 'immortal') {
-          logMsg += `⚔️ Битва бессмертных!<br>`;
-          logMsg += resolveCombat(player, bot, pAttack, bBlock, REAL_PLAYER_NAME, "Враг", pIgnore, pUsedActiveSkill);
-          logMsg += resolveCombat(bot, player, bAttack, pBlock, "Враг", REAL_PLAYER_NAME, bIgnore, bUsedActiveSkill);
+          logMsg += `<span class="text-skill">⚔️ Битва бессмертных!</span><br>`;
+          logMsg += resolveCombat(player, bot, pAttack, bBlock, REAL_PLAYER_NAME, currentBotName, pIgnore, pUsedActiveSkill);
+          logMsg += resolveCombat(bot, player, bAttack, pBlock, currentBotName, REAL_PLAYER_NAME, bIgnore, bUsedActiveSkill);
       } else if (playerChoice === 'immortal' && botChoice === 'attack') {
-          logMsg += `⚔️ Встречная атака! Вы бессмертны!<br>`;
-          logMsg += resolveCombat(bot, player, bAttack, pBlock, "Враг", REAL_PLAYER_NAME, bIgnore, bUsedActiveSkill);
+          logMsg += `<span class="text-skill">⚔️ Встречная атака! ${REAL_PLAYER_NAME} бессмертен!</span><br>`;
+          logMsg += resolveCombat(bot, player, bAttack, pBlock, currentBotName, REAL_PLAYER_NAME, bIgnore, bUsedActiveSkill);
           if (pAttack > 0) {
              let bDmgTaken = pAttack;
-             if (bot.classId === 'assassin' && bot.hp <= 4 && !bot.usedInstinct) { bDmgTaken = 0; bot.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт: Враг уклонился!</span><br>`; }
-             else if (Math.random() < bot.eqP.dodge) { bDmgTaken = 0; logMsg += `<span class="text-info">👢 Враг уклонился!</span><br>`; }
+             if (bot.classId === 'assassin' && bot.hp <= 4 && !bot.usedInstinct) { bDmgTaken = 0; bot.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт: ${currentBotName} уклонился!</span><br>`; }
+             else if (Math.random() < bot.eqP.dodge) { bDmgTaken = 0; logMsg += `<span class="text-info">👢 ${currentBotName} уклонился!</span><br>`; }
              if (bInvul) bDmgTaken = 0;
-             if (bDmgTaken > 0) logMsg += applyDamage(bot, player, bDmgTaken, "Враг", pUsedActiveSkill);
+             if (bDmgTaken > 0) logMsg += applyDamage(bot, player, bDmgTaken, currentBotName, pUsedActiveSkill);
           }
       } else if (playerChoice === 'attack' && botChoice === 'immortal') {
-          logMsg += `⚔️ Встречная атака! Враг бессмертен!<br>`;
-          logMsg += resolveCombat(player, bot, pAttack, bBlock, REAL_PLAYER_NAME, "Враг", pIgnore, pUsedActiveSkill);
+          logMsg += `<span class="text-skill">⚔️ Встречная атака! ${currentBotName} бессмертен!</span><br>`;
+          logMsg += resolveCombat(player, bot, pAttack, bBlock, REAL_PLAYER_NAME, currentBotName, pIgnore, pUsedActiveSkill);
           if (bAttack > 0) {
              let pDmgTaken = bAttack;
-             if (player.classId === 'assassin' && player.hp <= 4 && !player.usedInstinct) { pDmgTaken = 0; player.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт: Вы уклонились!</span><br>`; }
-             else if (Math.random() < player.eqP.dodge) { pDmgTaken = 0; logMsg += `<span class="text-info">👢 Сапоги: Вы уклонились!</span><br>`; }
+             if (player.classId === 'assassin' && player.hp <= 4 && !player.usedInstinct) { pDmgTaken = 0; player.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт: ${REAL_PLAYER_NAME} уклонился!</span><br>`; }
+             else if (Math.random() < player.eqP.dodge) { pDmgTaken = 0; logMsg += `<span class="text-info">👢 Сапоги: ${REAL_PLAYER_NAME} уклонился!</span><br>`; }
              if (pInvul) pDmgTaken = 0;
              if (pDmgTaken > 0) logMsg += applyDamage(player, bot, pDmgTaken, REAL_PLAYER_NAME, bUsedActiveSkill);
           }
       } else {
           let pDmgTaken = bAttack; let bDmgTaken = pAttack;
-          if (player.classId === 'assassin' && player.hp <= 4 && !player.usedInstinct) { pDmgTaken = 0; player.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт: Вы уклонились!</span><br>`; }
-          else if (Math.random() < player.eqP.dodge) { pDmgTaken = 0; logMsg += `<span class="text-info">👢 Сапоги: Вы уклонились!</span><br>`; }
-          if (bot.classId === 'assassin' && bot.hp <= 4 && !bot.usedInstinct) { bDmgTaken = 0; bot.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт: Враг уклонился!</span><br>`; }
-          else if (Math.random() < bot.eqP.dodge) { bDmgTaken = 0; logMsg += `<span class="text-info">👢 Враг уклонился!</span><br>`; }
+          if (player.classId === 'assassin' && player.hp <= 4 && !player.usedInstinct) { pDmgTaken = 0; player.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт: ${REAL_PLAYER_NAME} уклонился!</span><br>`; }
+          else if (Math.random() < player.eqP.dodge) { pDmgTaken = 0; logMsg += `<span class="text-info">👢 Сапоги: ${REAL_PLAYER_NAME} уклонился!</span><br>`; }
+          if (bot.classId === 'assassin' && bot.hp <= 4 && !bot.usedInstinct) { bDmgTaken = 0; bot.usedInstinct = true; logMsg += `<span class="text-info">🌑 Инстинкт: ${currentBotName} уклонился!</span><br>`; }
+          else if (Math.random() < bot.eqP.dodge) { bDmgTaken = 0; logMsg += `<span class="text-info">👢 ${currentBotName} уклонился!</span><br>`; }
           if (pInvul) pDmgTaken = 0; if (bInvul) bDmgTaken = 0;
-          logMsg += `⚔️ Встречная атака! Вы бьете (${pAttack}), Враг бьет (${bAttack}).<br>`;
-          if (bDmgTaken > 0) logMsg += applyDamage(bot, player, bDmgTaken, "Враг", pUsedActiveSkill);
+          
+          logMsg += `<span class="text-skill">⚔️ Встречная атака!</span><br>`;
+          logMsg += `🗡️ ${REAL_PLAYER_NAME} наносит ${getHitAdj(pAttack)} удар (${pAttack})<br>`;
+          logMsg += `🗡️ ${currentBotName} наносит ${getHitAdj(bAttack)} удар (${bAttack})<br>`;
+          
+          if (bDmgTaken > 0) logMsg += applyDamage(bot, player, bDmgTaken, currentBotName, pUsedActiveSkill);
           if (pDmgTaken > 0) logMsg += applyDamage(player, bot, pDmgTaken, REAL_PLAYER_NAME, bUsedActiveSkill);
       }
   } else if (!pAttacking && !bAttacking) {
       logMsg += `<span class="text-block">🛡️ Никто не атаковал.</span><br>`;
   } else if (pAttacking && !bAttacking) {
       let bDefVal = bDefending ? bBlock : 0;
-      logMsg += resolveCombat(player, bot, pAttack, (pIgnore ? 0 : bDefVal), REAL_PLAYER_NAME, "Враг", pIgnore, pUsedActiveSkill);
+      logMsg += resolveCombat(player, bot, pAttack, (pIgnore ? 0 : bDefVal), REAL_PLAYER_NAME, currentBotName, pIgnore, pUsedActiveSkill);
   } else if (!pAttacking && bAttacking) {
       let pDefVal = pDefending ? pBlock : 0;
-      logMsg += resolveCombat(bot, player, bAttack, (bIgnore ? 0 : pDefVal), "Враг", REAL_PLAYER_NAME, bIgnore, bUsedActiveSkill);
+      logMsg += resolveCombat(bot, player, bAttack, (bIgnore ? 0 : pDefVal), currentBotName, REAL_PLAYER_NAME, bIgnore, bUsedActiveSkill);
   }
 
-  // Шлемы и Воины 
+  if (player.furyTurnsLeft > 0) player.furyTurnsLeft--; if (bot.furyTurnsLeft > 0) bot.furyTurnsLeft--;
+  if (player.immortalTurns > 0) player.immortalTurns--; if (bot.immortalTurns > 0) bot.immortalTurns--;
+  player.immortalTurnActive = false; bot.immortalTurnActive = false;
+
+  // ГРУППИРОВКА ЭФФЕКТОВ
+  let effectsMsg = "";
+  if (player.poisoned) { player.hp -= 1; effectsMsg += `<span class="text-dmg">☠️ Яд: 1 урон ${REAL_PLAYER_NAME}!</span><br>`; effectsMsg += checkImmortality(player, REAL_PLAYER_NAME); }
+  if (bot.poisoned) { bot.hp -= 1; effectsMsg += `<span class="text-heal">☠️ Яд: 1 урон ${currentBotName}!</span><br>`; effectsMsg += checkImmortality(bot, currentBotName); }
+  
+  effectsMsg += processHoT(player, bot, REAL_PLAYER_NAME, currentBotName); 
+  effectsMsg += processHoT(bot, player, currentBotName, REAL_PLAYER_NAME);
+  
   if (player.canHeal && player.hp < player.maxHp && player.eqP.healOnce > 0) { 
     let deficit = player.maxHp - player.hp; let healAmt = Math.min(deficit, player.eqP.healOnce); 
     player.hp += healAmt; player.eqP.healOnce -= healAmt; 
-    logMsg += `<span class="text-heal">🪖 Шлем лечит вам ${healAmt} ХП.</span><br>`; 
+    effectsMsg += `<span class="text-heal">🪖 Шлем лечит ${REAL_PLAYER_NAME} +${healAmt} ХП</span><br>`; 
   }
   if (bot.canHeal && bot.hp < bot.maxHp && bot.eqP.healOnce > 0) { 
     let deficit = bot.maxHp - bot.hp; let healAmt = Math.min(deficit, bot.eqP.healOnce); 
     bot.hp += healAmt; bot.eqP.healOnce -= healAmt; 
+    effectsMsg += `<span class="text-heal">🪖 Шлем лечит ${currentBotName} +${healAmt} ХП</span><br>`;
   }
-  if (player.canHeal && player.classId === 'warrior' && player.hp > 0 && player.hp <= 6) { player.hp += 1; logMsg += `<span class="text-heal">🩸 Боевой раж: +1 ХП.</span><br>`; }
-  if (bot.canHeal && bot.classId === 'warrior' && bot.hp > 0 && bot.hp <= 6) { bot.hp += 1; }
+  if (player.canHeal && player.classId === 'warrior' && player.hp > 0 && player.hp <= 6) { player.hp += 1; effectsMsg += `<span class="text-heal">🩸 Боевой раж: ${REAL_PLAYER_NAME} +1 ХП</span><br>`; }
+  if (bot.canHeal && bot.classId === 'warrior' && bot.hp > 0 && bot.hp <= 6) { bot.hp += 1; effectsMsg += `<span class="text-heal">🩸 Боевой раж: ${currentBotName} +1 ХП</span><br>`; }
 
-  // Снижаем таймеры баффов
-  if (player.furyTurnsLeft > 0) player.furyTurnsLeft--; if (bot.furyTurnsLeft > 0) bot.furyTurnsLeft--;
-  if (player.immortalTurns > 0) player.immortalTurns--; if (bot.immortalTurns > 0) bot.immortalTurns--;
-  
-  // Снимаем броню первого хода бессмертия
-  player.immortalTurnActive = false; bot.immortalTurnActive = false;
+  if (effectsMsg !== "") {
+      logMsg += `<div class="text-skill" style="margin-top: 10px; margin-bottom: 5px;">🧿 Эффекты:</div>` + effectsMsg;
+  }
 
-  // ЗАДАЧА 4: Яд и HoT применяются в конце хода
-  if (player.poisoned) { player.hp -= 1; logMsg += `<span class="text-dmg">☠️ Яд: 1 урон вам!</span><br>`; logMsg += checkImmortality(player, REAL_PLAYER_NAME); }
-  if (bot.poisoned) { bot.hp -= 1; logMsg += `<span class="text-heal">☠️ Яд: 1 урон врагу!</span><br>`; logMsg += checkImmortality(bot, "Враг"); }
-  logMsg += processHoT(player, bot, REAL_PLAYER_NAME, "Враг"); 
-  logMsg += processHoT(bot, player, "Враг", REAL_PLAYER_NAME);
-
-  checkSkills(player, bot, "Вы"); checkSkills(bot, player, "Враг");
+  checkSkills(player, bot, REAL_PLAYER_NAME); checkSkills(bot, player, currentBotName);
   logToScreen(logMsg); updateScreen(); checkWinner();
 
   if (!gameIsOver) {
@@ -709,20 +719,22 @@ function processHoT(healer, target, hName, tName) {
     let msg = "";
     if (healer.canHeal) {
         healer.hp += 2; if (healer.hp > healer.maxHp) healer.hp = healer.maxHp; 
-        msg = `💖 <i>${hName} лечит <span class="text-heal">2 ХП</span> (Сила жизни).</i><br>`;
+        msg = `💖 ${hName} лечит 2 ХП умением Сила жизни<br>`;
     }
     healer.hotTurnsLeft--;
-    if (healer.classId === 'priest') { target.hp -= 2; msg += `🌟 Свет наносит ${tName} <span class="text-dmg">2 урона</span>!<br>`; msg += checkImmortality(target, tName); }
+    if (healer.classId === 'priest') { target.hp -= 2; msg += `🌟 Свет наносит ${tName} 2 урона!<br>`; msg += checkImmortality(target, tName); }
     return msg;
   } return "";
 }
 
 function resolveCombat(atkC, defC, aRoll, dBlock, aName, dName, ignBlock, isSkill = false) {
-  let res = `🗡️ ${aName} бьет (${aRoll}), блок: ${ignBlock ? '0' : dBlock}.<br>`;
-  if (defC.classId === 'assassin' && defC.hp <= 4 && !defC.usedInstinct) { defC.usedInstinct = true; return res + `<span class="text-info">🌑 Инстинкт: ${dName} уклоняется!</span>`; }
-  if (Math.random() < defC.eqP.dodge) return res + `<span class="text-info">👢 Сапоги: ${dName} уклоняется!</span>`;
+  let res = `🗡️ ${aName} наносит ${getHitAdj(aRoll)} удар (${aRoll})<br>`;
+  if (!ignBlock) res += `🛡️ ${dName} ставит ${getBlockAdj(dBlock)} блок (${dBlock})<br>`;
+  else res += `🛡️ ${dName} не может заблокировать удар!<br>`;
+  
+  if (defC.classId === 'assassin' && defC.hp <= 4 && !defC.usedInstinct) { defC.usedInstinct = true; return res + `<span class="text-info">🌑 Инстинкт: ${dName} уклоняется!</span><br>`; }
+  if (Math.random() < defC.eqP.dodge) return res + `<span class="text-info">👢 Сапоги: ${dName} уклоняется!</span><br>`;
 
-  // ИСПРАВЛЕНИЕ: Универсальный подсчет блоков для Оплота и Возмездия
   let actualBlocked = ignBlock ? 0 : Math.min(aRoll, dBlock);
   defC.stats.dmgBlocked += actualBlocked;
   
@@ -742,34 +754,32 @@ function resolveCombat(atkC, defC, aRoll, dBlock, aName, dName, ignBlock, isSkil
     let heal = dBlock - aRoll + defC.eqP.healB;
     if (defC.canHeal) {
         defC.hp = Math.min(defC.maxHp, defC.hp + heal); defC.stats.healed += heal;
-        res += `✨ Избыточный блок! ${dName} лечит <span class="text-heal">${heal} ХП</span>.<br>`;
+        res += `✨ Избыточный блок! ${dName} +${heal} ХП<br>`;
     } else { res += `✨ Избыточный блок! Но ${dName} не может исцеляться.<br>`; }
     if (defC.classId === 'guardian') { res += applyDamage(atkC, defC, 1, aName, false); res += `🗡️ <span class="text-info">Контратака!</span><br>`; }
-    if (defC.classId === 'priest') { res += applyDamage(atkC, defC, heal, aName, false); res += `🌟 Свет наносит <span class="text-dmg">${heal} урона</span>!<br>`; }
+    if (defC.classId === 'priest') { res += applyDamage(atkC, defC, heal, aName, false); res += `🌟 Свет наносит ${aName} <span class="text-dmg">${heal} урона</span>!<br>`; }
   }
   return res;
 }
 
 function applyDamage(t, a, dmg, tName, isSkill = false) {
-  let res = `💥 ${tName} получает <span class="text-dmg">${dmg} урона</span>.<br>`;
+  let res = `💥 ${tName} получает <span class="text-dmg">${dmg} урона</span><br>`;
   t.hp -= dmg; 
   if (!isSkill) a.stats.dmgDealt += dmg; 
   if (a.classId === 'assassin') a.pursuitDmg += dmg;
   
-  // КУРАЖ (Тёмный рыцарь)
   if (a.classId === 'darkknight') {
       if (a.hp <= 4) a.courageThresholdDown = true;
       let thresh = a.courageThresholdDown ? 1 : 2;
       if (dmg >= thresh && a.canHeal) {
           let h = 1; a.hp = Math.min(a.maxHp, a.hp + h); a.stats.healed += h;
-          res += `🦇 <span class="text-heal">Кураж: +${h} ХП</span><br>`;
+          res += `🦇 <span class="text-heal">Кураж: ${a.className === 'Тёмный Рыцарь' ? a.className : 'Тёмный Рыцарь'} +${h} ХП</span><br>`;
       }
   }
 
-  // МОЛИТВА (Жрец - больше не заряжает Силу жизни)
   if (t.classId === 'priest' && t.hp <= 8 && t.hp > 0 && !t.usedPrayer && t.canHeal) {
     t.usedPrayer = true; let h = Math.min(6, t.maxHp - t.hp); t.hp += h; 
-    res += `🙏 <span class="text-heal">Молитва: +${h} ХП!</span><br>`;
+    res += `🙏 <span class="text-heal">Молитва: ${tName} +${h} ХП!</span><br>`;
   } 
   
   if (t.hp <= 0 && t.classId === 'darkknight') {
@@ -797,16 +807,16 @@ function buildSkillHtml(char) {
   `;
   
   let p1State = "Активен"; let p2State = "Активен";
-  if (char.classId === 'warrior') { p1State = char.hp <= 6 ? "ОНЛАЙН (+2)" : "ХП ≤ 6"; p2State = char.hp <= 6 ? "ОНЛАЙН" : "ХП ≤ 6"; }
+  if (char.classId === 'warrior') { p1State = char.hp <= 6 ? "Активно" : "Не активно"; p2State = char.hp <= 6 ? "Активно" : "Не активно"; }
   if (char.classId === 'assassin') { 
-      p1State = char.usedInstinct ? "ИСЧЕРПАН" : (char.hp <= 4 ? "ГОТОВ" : "ХП ≤ 4"); 
+      p1State = char.usedInstinct ? "ИСЧЕРПАН" : (char.hp <= 4 ? "ГОТОВ" : ""); 
       let currentDmg = Math.min(char.pursuitDmg, 13);
       p2State = char.poisoned ? "АКТИВНО" : `${currentDmg}/13`; 
   }
-  if (char.classId === 'guardian') { p1State = "Авто (Блок)"; p2State = `${char.retBlocks}/2 | Бонус: +${char.retBonus}`; }
-  if (char.classId === 'priest') { p1State = char.usedPrayer ? "ИСЧЕРПАН" : (char.hp <= 8 ? "ГОТОВ" : "ХП ≤ 8"); p2State = "Авто (Лечение)"; }
-  if (char.classId === 'darkknight') { p1State = char.courageThresholdDown ? "ХП ≤ 4 (Порог 1)" : "ОНЛАЙН (Порог 2)"; p2State = char.usedImmortality ? (char.immortalTurns > 0 ? "АКТИВНО" : "ИСЧЕРПАН") : "ГОТОВ"; }
-
+  if (char.classId === 'guardian') { p1State = ""; p2State = `${char.retBlocks}/2 | Бонус: +${char.retBonus}`; }
+  if (char.classId === 'priest') { p1State = char.usedPrayer ? "ИСЧЕРПАН" : ""; p2State = ""; }
+  if (char.classId === 'darkknight') { p1State = char.courageThresholdDown ? "<span style='color:#ef4444'>Усиленный</span>" : "Обычный"; p2State = char.usedImmortality ? (char.immortalTurns > 0 ? "АКТИВНО" : "ИСЧЕРПАН") : "ГОТОВ"; }
+  
   html += `<div class="skill-slot" style="opacity:0.8"><div class="skill-slot-title">🔵 ${info.p1}</div><div class="skill-progress-text" style="color:#9ca3af">${p1State}</div></div>`;
   html += `<div class="skill-slot" style="opacity:0.8"><div class="skill-slot-title">🔴 ${info.p2}</div><div class="skill-progress-text" style="color:#9ca3af">${p2State}</div></div>`;
   return html;
