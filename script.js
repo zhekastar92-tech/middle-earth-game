@@ -766,7 +766,11 @@ function buildSkillHtml(char) {
   
   let p1State = "Активен"; let p2State = "Активен";
   if (char.classId === 'warrior') { p1State = char.hp <= 6 ? "ОНЛАЙН (+2)" : "ХП ≤ 6"; p2State = char.hp <= 6 ? "ОНЛАЙН" : "ХП ≤ 6"; }
-  if (char.classId === 'assassin') { p1State = char.usedInstinct ? "ИСЧЕРПАН" : (char.hp <= 4 ? "ГОТОВ" : "ХП ≤ 4"); p2State = char.poisoned ? "ОТРАВЛЕНО" : `${char.pursuitDmg}/13`; }
+  if (char.classId === 'assassin') { 
+      p1State = char.usedInstinct ? "ИСЧЕРПАН" : (char.hp <= 4 ? "ГОТОВ" : "ХП ≤ 4"); 
+      let currentDmg = Math.min(char.pursuitDmg, 13);
+      p2State = char.poisoned ? "АКТИВНО" : `${currentDmg}/13`; 
+  }
   if (char.classId === 'guardian') { p1State = "Авто (Блок)"; p2State = `Бонус: +${char.retBonus}`; }
   if (char.classId === 'priest') { p1State = char.usedPrayer ? "ИСЧЕРПАН" : (char.hp <= 8 ? "ГОТОВ" : "ХП ≤ 8"); p2State = "Авто (Лечение)"; }
   if (char.classId === 'darkknight') { p1State = char.courageThresholdDown ? "ХП ≤ 4 (Порог 1)" : "ОНЛАЙН (Порог 2)"; p2State = char.usedImmortality ? (char.immortalTurns > 0 ? "АКТИВНО" : "ИСЧЕРПАН") : "ГОТОВ"; }
