@@ -709,7 +709,6 @@ function processHoT(healer, target, hName, tName) {
     let msg = "";
     if (healer.canHeal) {
         healer.hp += 2; if (healer.hp > healer.maxHp) healer.hp = healer.maxHp; 
-        healer.stats.healed += 2; // Заряжает Тёмную ярость
         msg = `💖 <i>${hName} лечит <span class="text-heal">2 ХП</span> (Сила жизни).</i><br>`;
     }
     healer.hotTurnsLeft--;
@@ -767,14 +766,15 @@ function applyDamage(t, a, dmg, tName, isSkill = false) {
       }
   }
 
+  // МОЛИТВА (Жрец - больше не заряжает Силу жизни)
   if (t.classId === 'priest' && t.hp <= 8 && t.hp > 0 && !t.usedPrayer && t.canHeal) {
-    t.usedPrayer = true; let h = Math.min(6, t.maxHp - t.hp); t.hp += h; t.stats.healed += h;
+    t.usedPrayer = true; let h = Math.min(6, t.maxHp - t.hp); t.hp += h; 
     res += `🙏 <span class="text-heal">Молитва: +${h} ХП!</span><br>`;
   } 
   
   if (t.hp <= 0 && t.classId === 'darkknight') {
       if (!t.usedImmortality) { res += checkImmortality(t, tName); } 
-      else if (t.immortalTurnActive) { t.hp = 1; res += `<span class="text-skill">🛡️ Смерть отступает!</span><br>`; } // Защита от ваншота в ход воскрешения
+      else if (t.immortalTurnActive) { t.hp = 1; res += `<span class="text-skill">🛡️ Смерть отступает!</span><br>`; }
   }
   return res;
 }
