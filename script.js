@@ -40,16 +40,16 @@ if (needsLbReset) {
 function saveData() { localStorage.setItem('middleEarthData', JSON.stringify(gameData)); }
 
 const RANKS = [
-  { name: "Железо", icon: "🔘", maxLp: 300, borderClass: "border-iron", textClass: "" },
-  { name: "Бронза", icon: "🟤", maxLp: 600, borderClass: "border-bronze", textClass: "" },
-  { name: "Серебро", icon: "⚪", maxLp: 1000, borderClass: "border-silver", textClass: "" },
-  { name: "Золото", icon: "🟡", maxLp: 1400, borderClass: "border-gold", textClass: "" },
-  { name: "Изумруд", icon: "❇️", maxLp: 1800, borderClass: "border-emerald", textClass: "" },
-  { name: "Алмаз", icon: "💎", maxLp: 2400, borderClass: "border-diamond", textClass: "" },
-  { name: "Мастер", icon: "❄️", maxLp: 3000, borderClass: "border-master", textClass: "text-master" },
-  { name: "Грандмастер", icon: "🌟", maxLp: 3800, borderClass: "border-grandmaster", textClass: "text-grandmaster" },
-  { name: "Владыка", icon: "🔱", maxLp: 5000, borderClass: "border-overlord", textClass: "text-overlord" },
-  { name: "Феникс", icon: "🐦‍🔥", maxLp: 99999, borderClass: "border-phoenix", textClass: "text-phoenix" }
+  { name: "Железо", icon: "🔘", maxLp: 300, borderClass: "border-iron", textClass: "", iconClass: "" },
+  { name: "Бронза", icon: "🟤", maxLp: 600, borderClass: "border-bronze", textClass: "", iconClass: "" },
+  { name: "Серебро", icon: "⚪", maxLp: 1000, borderClass: "border-silver", textClass: "", iconClass: "" },
+  { name: "Золото", icon: "🟡", maxLp: 1400, borderClass: "border-gold", textClass: "", iconClass: "" },
+  { name: "Изумруд", icon: "❇️", maxLp: 1800, borderClass: "border-emerald", textClass: "text-emerald", iconClass: "text-emerald" },
+  { name: "Алмаз", icon: "💎", maxLp: 2400, borderClass: "border-diamond", textClass: "text-diamond", iconClass: "text-diamond" },
+  { name: "Мастер", icon: "⚜️", maxLp: 3000, borderClass: "border-master", textClass: "text-master", iconClass: "text-master" },
+  { name: "Грандмастер", icon: "🦅", maxLp: 3800, borderClass: "border-grandmaster", textClass: "text-grandmaster", iconClass: "text-grandmaster" },
+  { name: "Владыка", icon: "🔱", maxLp: 5000, borderClass: "border-overlord", textClass: "text-overlord", iconClass: "text-overlord" },
+  { name: "Феникс", icon: "🐦‍🔥", maxLp: 99999, borderClass: "border-phoenix", textClass: "text-phoenix", iconClass: "" }
 ];
 
 const ARENAS = [
@@ -125,22 +125,21 @@ function switchTab(btn, tabId) {
 }
 
 function renderLeaderboard() {
-  // Собираем всех ботов + игрока в один массив
   let allPlayers = [...gameData.leaderboard, { name: REAL_PLAYER_NAME, lp: gameData.lp, isPlayer: true }];
-  allPlayers.sort((a, b) => b.lp - a.lp); // Сортируем по очкам
+  allPlayers.sort((a, b) => b.lp - a.lp); 
 
   let html = '';
   let playerRank = -1;
   for (let i = 0; i < allPlayers.length; i++) { if (allPlayers[i].isPlayer) playerRank = i + 1; }
 
-  // Отрисовываем Топ-10 
   for (let i = 0; i < 10 && i < allPlayers.length; i++) {
       let p = allPlayers[i];
       let rankIcon = (i===0)?'🥇':(i===1)?'🥈':(i===2)?'🥉':`${i+1}`;
       let pRank = getRank(p.lp);
       
       let nameClass = pRank.textClass ? `profile-name ${pRank.textClass}` : `profile-name`;
-      let rankClass = pRank.textClass ? `profile-rank ${pRank.textClass}` : `profile-rank`; // Свечение для текста
+      let iconHtml = pRank.iconClass ? `<span class="${pRank.iconClass}">${pRank.icon}</span>` : pRank.icon;
+      let textHtml = pRank.textClass ? `<span class="${pRank.textClass}">${pRank.name} | ${p.lp} LP</span>` : `${pRank.name} | ${p.lp} LP`;
       
       let borderStyle = p.isPlayer ? "border: 2px solid #e11d48; background: rgba(225, 29, 72, 0.2); box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);" : "";
       
@@ -150,11 +149,47 @@ function renderLeaderboard() {
               <div style="font-size: 20px; font-weight: 900; color: #fbbf24; width: 30px; text-align: center;">${rankIcon}</div>
               <div style="text-align: left;">
                   <div class="${nameClass}">👤 ${p.name}</div>
-                  <div class="${rankClass}">${pRank.icon} ${pRank.name} | ${p.lp} LP</div>
+                  <div class="profile-rank">${iconHtml} ${textHtml}</div>
               </div>
           </div>
       </div>`;
   }
+
+  if (playerRank > 10) {
+      let displayRank = playerRank;
+      
+      if (playerRank === 51) {
+          let lowestBotLp = allPlayers[49].lp; 
+          let gap = lowestBotLp - gameData.lp;
+          
+          if (gap > 500) { displayRank = "100+"; } 
+          else {
+              let randomJitter = Math.floor(Math.random() * 4); 
+              displayRank = 50 + Math.floor(gap / 10) + randomJitter;
+              if (displayRank > 100) displayRank = 100;
+          }
+      }
+
+      let pRank = getRank(gameData.lp);
+      let nameClass = pRank.textClass ? `profile-name ${pRank.textClass}` : `profile-name`;
+      let iconHtml = pRank.iconClass ? `<span class="${pRank.iconClass}">${pRank.icon}</span>` : pRank.icon;
+      let textHtml = pRank.textClass ? `<span class="${pRank.textClass}">${pRank.name} | ${gameData.lp} LP</span>` : `${pRank.name} | ${gameData.lp} LP`;
+      
+      html += `<div style="text-align: center; color: #94a3b8; font-weight: bold; margin: 15px 0; font-size: 20px;">...</div>`;
+      html += `
+      <div class="profile-header" style="margin-bottom: 10px; border: 2px solid #e11d48; background: rgba(225, 29, 72, 0.2); box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);">
+          <div style="display:flex; align-items:center; gap: 15px;">
+              <div style="font-size: 20px; font-weight: 900; color: #fbbf24; min-width: 30px; text-align: center;">${displayRank}</div>
+              <div style="text-align: left;">
+                  <div class="${nameClass}">👤 ${REAL_PLAYER_NAME}</div>
+                  <div class="profile-rank">${iconHtml} ${textHtml}</div>
+              </div>
+          </div>
+      </div>`;
+  }
+  document.getElementById("leaderboard-content").innerHTML = html;
+}
+
 
   // Если игрок не попал в Топ-10, показываем его внизу
   if (playerRank > 10) {
@@ -205,8 +240,11 @@ function simulateBots() {
 function updateMenuProfile() {
   let rank = getRank(gameData.lp);
   let nameClass = rank.textClass ? ` class="profile-name ${rank.textClass}"` : ` class="profile-name"`;
-  let rankClass = rank.textClass ? ` class="profile-rank ${rank.textClass}"` : ` class="profile-rank"`; // <-- Свечение для текста
-  document.getElementById("menu-profile").innerHTML = `<div${nameClass}>👤 ${REAL_PLAYER_NAME}</div><div${rankClass}>${rank.icon} ${rank.name} | ${gameData.lp} LP</div>`;
+  
+  let iconHtml = rank.iconClass ? `<span class="${rank.iconClass}">${rank.icon}</span>` : rank.icon;
+  let textHtml = rank.textClass ? `<span class="${rank.textClass}">${rank.name} | ${gameData.lp} LP</span>` : `${rank.name} | ${gameData.lp} LP`;
+  
+  document.getElementById("menu-profile").innerHTML = `<div${nameClass}>👤 ${REAL_PLAYER_NAME}</div><div class="profile-rank">${iconHtml} ${textHtml}</div>`;
 }
 
 function renderMainMenu() {
@@ -809,11 +847,11 @@ function updateScreen() {
   
   document.getElementById("ui-player-name").innerText = `${REAL_PLAYER_NAME} (${player.className})`;
   document.getElementById("ui-player-name").className = "char-name " + (pRank.textClass || "");
-  document.getElementById("ui-player-rank").innerText = `${pRank.icon} ${gameData.lp} LP`;
+  document.getElementById("ui-player-rank").innerHTML = (pRank.iconClass ? `<span class="${pRank.iconClass}">${pRank.icon}</span> ` : `${pRank.icon} `) + (pRank.textClass ? `<span class="${pRank.textClass}">${gameData.lp} LP</span>` : `${gameData.lp} LP`);
   
   document.getElementById("ui-bot-name").innerText = `${currentBotName} (${bot.className})`;
   document.getElementById("ui-bot-name").className = "char-name " + (bRank.textClass || "");
-  document.getElementById("ui-bot-rank").innerText = `${bRank.icon} ${bot.lp} LP`;
+  document.getElementById("ui-bot-rank").innerHTML = (bRank.iconClass ? `<span class="${bRank.iconClass}">${bRank.icon}</span> ` : `${bRank.icon} `) + (bRank.textClass ? `<span class="${bRank.textClass}">${bot.lp} LP</span>` : `${bot.lp} LP`);
   
   document.getElementById("ui-player-hp-fill").style.width = (player.hp / player.maxHp) * 100 + "%";
   document.getElementById("ui-player-hp-text").innerText = `${player.hp} / ${player.maxHp}`;
