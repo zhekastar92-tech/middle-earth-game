@@ -189,43 +189,6 @@ function renderLeaderboard() {
   }
   document.getElementById("leaderboard-content").innerHTML = html;
 }
-
-
-  // Если игрок не попал в Топ-10, показываем его внизу
-  if (playerRank > 10) {
-      let displayRank = playerRank;
-      
-      // ИЛЛЮЗИЯ СОТНИ: Если мы ниже 50-го места, вычисляем виртуальный ранг
-      if (playerRank === 51) {
-          let lowestBotLp = allPlayers[49].lp; 
-          let gap = lowestBotLp - gameData.lp;
-          
-          if (gap > 500) {
-              displayRank = "100+";
-          } else {
-              let randomJitter = Math.floor(Math.random() * 4); 
-              displayRank = 50 + Math.floor(gap / 10) + randomJitter;
-              if (displayRank > 100) displayRank = 100;
-          }
-      }
-
-      let pRank = getRank(gameData.lp);
-      let nameClass = pRank.textClass ? `profile-name ${pRank.textClass}` : `profile-name`;
-      let rankClass = pRank.textClass ? `profile-rank ${pRank.textClass}` : `profile-rank`; // Свечение для текста
-      
-      html += `<div style="text-align: center; color: #94a3b8; font-weight: bold; margin: 15px 0; font-size: 20px;">...</div>`;
-      html += `
-      <div class="profile-header" style="margin-bottom: 10px; border: 2px solid #e11d48; background: rgba(225, 29, 72, 0.2); box-shadow: 0 0 15px rgba(225, 29, 72, 0.4);">
-          <div style="display:flex; align-items:center; gap: 15px;">
-              <div style="font-size: 20px; font-weight: 900; color: #fbbf24; min-width: 30px; text-align: center;">${displayRank}</div>
-              <div style="text-align: left;">
-                  <div class="${nameClass}">👤 ${REAL_PLAYER_NAME}</div>
-                  <div class="${rankClass}">${pRank.icon} ${pRank.name} | ${gameData.lp} LP</div>
-              </div>
-          </div>
-      </div>`;
-  }
-  document.getElementById("leaderboard-content").innerHTML = html;
                                                                             }
 
 // НЮАНС: Симуляция 50 боёв в фоне!
