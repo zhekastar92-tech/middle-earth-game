@@ -263,6 +263,12 @@ function rollLoot(lp) {
 }
 
 function rollBotItemForSlot(lp, slot) {
+  // БАЛАНСНАЯ ПРАВКА: Жесткие правила для хай-энд ботов
+  if (lp >= 8000) return generateItem('epic', slot, Math.random() < 0.35);
+  if (lp >= 7000) return generateItem('epic', slot, Math.random() < 0.20);
+  if (lp >= 6000) return generateItem('epic', slot, Math.random() < 0.15);
+
+  // Старая логика для остальных рейтингов
   let arenaIdx = ARENAS.findIndex(a => lp <= a.maxLp);
   if (arenaIdx === -1) arenaIdx = ARENAS.length - 1;
   let rarity = null;
@@ -275,7 +281,9 @@ function rollBotItemForSlot(lp, slot) {
   } else if (arenaIdx === 3) { rarity = Math.random() < 0.5 ? 'epic' : 'rare'; } 
   else if (arenaIdx === 4) { rarity = Math.random() < 0.8 ? 'epic' : 'rare'; } 
   else { rarity = Math.random() < 0.95 ? 'epic' : 'rare'; }
-  if (!rarity) return null; return generateItem(rarity, slot); 
+  
+  if (!rarity) return null; 
+  return generateItem(rarity, slot); 
 }
 
 function generateItem(rarity, forceSlot = null, forceUnique = false) {
