@@ -490,7 +490,7 @@ function initChar(classId, isBot, lp) {
 
 function startTurnTimer() {
   if (gameIsOver) return;
-  turnTimeLeft = TURN_DURATION; queuedPlayerAction = 'skip'; isTurnActive = true;
+  queuedPlayerAction = 'skip'; isTurnActive = true;
   document.querySelectorAll('.controls .action-btn').forEach(btn => {
     if (btn.id !== 'btn-return') { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
   });
@@ -498,10 +498,21 @@ function startTurnTimer() {
   document.getElementById("turn-timer-container").style.display = "block";
   let textEl = document.getElementById("turn-timer-text");
   clearInterval(turnTimerId);
+  
+  let endTime = Date.now() + TURN_DURATION; // Точная метка конца хода в будущем
+  
   turnTimerId = setInterval(() => {
-    turnTimeLeft -= 100; textEl.innerText = (turnTimeLeft / 1000).toFixed(1);
+    turnTimeLeft = Math.max(0, endTime - Date.now()); // Вычисляем реальный остаток времени
+    textEl.innerText = (turnTimeLeft / 1000).toFixed(1);
+    
     if (turnTimeLeft <= 1000) textEl.style.color = '#ef4444'; else textEl.style.color = '#10b981';
-    if (turnTimeLeft <= 0) { clearInterval(turnTimerId); isTurnActive = false; textEl.innerText = "0.0"; playTurn(queuedPlayerAction); }
+    
+    if (turnTimeLeft <= 0) { 
+        clearInterval(turnTimerId); 
+        isTurnActive = false; 
+        textEl.innerText = "0.0"; 
+        playTurn(queuedPlayerAction); 
+    }
   }, 100);
 }
 
