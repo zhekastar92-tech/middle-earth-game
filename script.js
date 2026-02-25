@@ -375,10 +375,19 @@ function sellItem() {
   gameData.imperials += SELL_PRICES[selectedItem.rarity]; gameData.inventory = gameData.inventory.filter(i => i.id !== selectedItem.id);
   saveData(); closeModal(); updateBagTab(); if(document.getElementById('tab-shop').classList.contains('active')) renderShop();
 }
+function executeSellEquipped() {
+  gameData.imperials += SELL_PRICES[selectedItem.rarity]; gameData.equip[gameData.currentClass][selectedItem.slot] = null;
+  saveData(); closeModal(); updateHeroTab(); updateBagTab(); if(document.getElementById('tab-shop').classList.contains('active')) renderShop();
+}
+
 function sellEquippedItem() {
-  if(confirm("Вы уверены? Вещь будет уничтожена и вы получите " + SELL_PRICES[selectedItem.rarity] + " 🪙.")) {
-      gameData.imperials += SELL_PRICES[selectedItem.rarity]; gameData.equip[gameData.currentClass][selectedItem.slot] = null;
-      saveData(); closeModal(); updateHeroTab(); updateBagTab(); if(document.getElementById('tab-shop').classList.contains('active')) renderShop();
+  let msg = "Вы уверены? Вещь будет уничтожена и вы получите " + SELL_PRICES[selectedItem.rarity] + " 🪙.";
+  if (tg && tg.showConfirm) {
+      tg.showConfirm(msg, function(confirmed) {
+          if (confirmed) executeSellEquipped();
+      });
+  } else {
+      if(confirm(msg)) executeSellEquipped();
   }
 }
 
