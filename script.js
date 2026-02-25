@@ -61,8 +61,25 @@ const ARENAS = [
   { name: "Звёздный Олимп", icon: "🌌", maxLp: 99999, arenaClass: "arena-stars" }
 ];
 
-function getRank(lp) { return RANKS.find(r => lp <= r.maxLp) || RANKS[RANKS.length - 1]; }
-function getArena(lp) { return ARENAS.find(a => lp <= a.maxLp) || ARENAS[ARENAS.length - 1]; }
+// === УМНАЯ СИСТЕМА РАНГОВ (Универсальный Гейткипинг) ===
+function getRank(lp) { 
+    let rank = RANKS.find(r => lp <= r.maxLp) || RANKS[RANKS.length - 1]; 
+    
+    // Правило работает для ЛЮБОГО значения LP (твоего или бота)
+    if (rank.name === "Феникс" && gameData.leaderboard && gameData.leaderboard.length >= 50) {
+        // Берем очки 50-го места
+        let botLps = gameData.leaderboard.map(b => b.lp).sort((a, b) => b - a);
+        
+        // Вычисляем точный порог входа в клуб Фениксов
+        let threshold = botLps[49] - 500;
+        
+        // Если переданное LP не дотягивает до порога — безжалостно понижаем до Владыки
+        if (lp < threshold) {
+            return RANKS[RANKS.length - 2]; 
+        }
+    }
+    return rank; 
+}
 function getArenaDrops(lp) {
   if (lp <= 300) return { common: 0.10, uncommon: 0.02, rare: 0, epic: 0 }; 
   if (lp <= 600) return { common: 0.25, uncommon: 0.10, rare: 0.02, epic: 0 }; 
