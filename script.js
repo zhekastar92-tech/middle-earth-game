@@ -8,14 +8,9 @@ const BOT_NAMES = ["Nagibator228", "0xVortex", "SlavaCritam", "Gromila", "xXShad
 // БАЗА ДАННЫХ И МИГРАЦИЯ
 let gameData = { 
   lp: 0, imperials: 0, inventory: [], maxInventory: 6, hugeChestPity: 0, currentClass: 'warrior',
-  leaderboard: [], // Сохранение Топа
-  equip: { 
-    warrior: { head: null, body: null, arms: null, legs: null },
-    assassin: { head: null, body: null, arms: null, legs: null },
-    guardian: { head: null, body: null, arms: null, legs: null },
-    priest: { head: null, body: null, arms: null, legs: null },
-    darkknight: { head: null, body: null, arms: null, legs: null }
-  }
+  nextItemId: 0, // ЗАДАЧА 2: Счётчик ID
+  leaderboard: [], 
+  equip: { warrior: { head: null, body: null, arms: null, legs: null } }
 };
 
 try {
@@ -24,12 +19,28 @@ try {
     gameData.lp = saved.lp || 0; gameData.imperials = saved.imperials || 0;
     gameData.inventory = saved.inventory || []; gameData.maxInventory = saved.maxInventory || 6;
     gameData.hugeChestPity = saved.hugeChestPity || 0; gameData.currentClass = saved.currentClass || 'warrior';
+    gameData.nextItemId = saved.nextItemId || 0;
     if (saved.equip && saved.equip.warrior) { gameData.equip = saved.equip; } 
     else if (saved.equip) { gameData.equip.warrior = saved.equip; }
-    if (!gameData.equip.darkknight) gameData.equip.darkknight = { head: null, body: null, arms: null, legs: null };
     if (saved.leaderboard && saved.leaderboard.length === 50) gameData.leaderboard = saved.leaderboard;
   }
 } catch (e) {}
+
+// НОВЫЙ КЛАСС ДОБАВЛЕН
+const CLASSES = {
+  warrior: { name: "Воин", activeName: "На вылет", reqType: "dmgDealt", reqAmt: 5, p1: "Берсерк", p2: "Боевой раж" },
+  assassin: { name: "Убийца", activeName: "Двойной удар", reqType: "dmgDealt", reqAmt: 4, p1: "Инстинкт выживания", p2: "Преследование" },
+  guardian: { name: "Страж", activeName: "Оплот", reqType: "dmgBlocked", reqAmt: 5, p1: "Контратака", p2: "Возмездие" },
+  priest: { name: "Жрец", activeName: "Сила жизни", reqType: "healed", reqAmt: 3, p1: "Молитва", p2: "Обжигающий свет" },
+  darkknight: { name: "Тёмный Рыцарь", activeName: "Тёмная ярость", reqType: "healed", reqAmt: 3, p1: "Кураж", p2: "Бессмертие" }
+};
+
+// ЗАДАЧА 1: Автоматическая миграция экипировки
+Object.keys(CLASSES).forEach(cls => {
+    if (!gameData.equip[cls]) {
+        gameData.equip[cls] = { head: null, body: null, arms: null, legs: null };
+    }
+});
 
 // Принудительно обновляем ботов до 7000-8000 LP (даже если они уже были созданы в старом сохранении)
 let needsLbReset = !gameData.leaderboard || gameData.leaderboard.length === 0 || gameData.leaderboard[0].lp < 5000;
@@ -94,14 +105,6 @@ function calculateLpChange(lp, isWin) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// НОВЫЙ КЛАСС ДОБАВЛЕН
-const CLASSES = {
-  warrior: { name: "Воин", activeName: "На вылет", reqType: "dmgDealt", reqAmt: 5, p1: "Берсерк", p2: "Боевой раж" },
-  assassin: { name: "Убийца", activeName: "Двойной удар", reqType: "dmgDealt", reqAmt: 4, p1: "Инстинкт выживания", p2: "Преследование" },
-  guardian: { name: "Страж", activeName: "Оплот", reqType: "dmgBlocked", reqAmt: 5, p1: "Контратака", p2: "Возмездие" },
-  priest: { name: "Жрец", activeName: "Сила жизни", reqType: "healed", reqAmt: 3, p1: "Молитва", p2: "Обжигающий свет" },
-  darkknight: { name: "Тёмный Рыцарь", activeName: "Тёмная ярость", reqType: "healed", reqAmt: 3, p1: "Кураж", p2: "Бессмертие" }
-};
 
 const SLOT_NAMES = { head: "Шлем", body: "Броня", arms: "Перчатки", legs: "Сапоги" };
 const RARITY_NAMES = { common: "Обычный", uncommon: "Необычный", rare: "Редкий", epic: "Эпический" };
@@ -278,7 +281,11 @@ function rollBotItemForSlot(lp, slot) {
 function generateItem(rarity, forceSlot = null, forceUnique = false) {
   const slots = ['head', 'body', 'arms', 'legs'];
   const slot = forceSlot ? forceSlot : slots[Math.floor(Math.random() * slots.length)];
-  let item = { id: Date.now() + Math.floor(Math.random()*1000), rarity: rarity, slot: slot, hp: 0, perk: null, unique: null };
+  
+  gameData.nextItemId++; // Надежный счетчик
+  // Добавлено поле classId
+  let item = { id: gameData.nextItemId, classId: null, rarity: rarity, slot: slot, hp: 0, perk: null, unique: null }; 
+  
   if (rarity === 'common') { item.hp = Math.floor(Math.random() * 2) + 1; } 
   else if (rarity === 'uncommon') { item.hp = Math.floor(Math.random() * 2) + 1; if (Math.random() < 0.1) item.perk = generatePerk(slot, 1, 1, 1); } 
   else if (rarity === 'rare') { item.hp = Math.floor(Math.random() * 2) + 2; if (Math.random() < 0.1) item.perk = generatePerk(slot, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1, Math.floor(Math.random()*2)+1); } 
@@ -554,10 +561,6 @@ function playTurn(playerChoice) {
   let logMsg = "";
   
   if (playerChoice === 'skip') { logMsg += `<span class="text-block">⏳ Вы не успели сделать выбор и пропускаете ход!</span><br>`; }
-  if (player.poisoned) { player.hp -= 1; logMsg += `<span class="text-dmg">☠️ Яд: 1 урон вам!</span><br>`; logMsg += checkImmortality(player, REAL_PLAYER_NAME); }
-  if (bot.poisoned) { bot.hp -= 1; logMsg += `<span class="text-heal">☠️ Яд: 1 урон врагу!</span><br>`; logMsg += checkImmortality(bot, "Враг"); }
-
-  logMsg += processHoT(player, bot, REAL_PLAYER_NAME, "Враг"); logMsg += processHoT(bot, player, "Враг", REAL_PLAYER_NAME);
 
   // ИИ Бота: если бессмертен - бьет бессмертием
   let botChoice = bot.immortalTurns > 0 ? 'immortal' : (bot.skillReady ? 'skill' : (Math.random() < 0.5 ? 'attack' : 'defend'));
@@ -579,7 +582,7 @@ function playTurn(playerChoice) {
     logMsg += `<span class="text-skill">🌟 Вы: "${CLASSES[player.classId].activeName}"!</span><br>`;
     if (player.classId === 'warrior') pIgnore = true; if (player.classId === 'assassin') pDouble = true;
     if (player.classId === 'guardian') pInvul = true; if (player.classId === 'priest') player.hotTurnsLeft = 2;
-    if (player.classId === 'darkknight') player.furyTurnsLeft = 3; // Рыцарь: 3 хода баффа
+    if (player.classId === 'darkknight') player.furyTurnsLeft = 3; 
   }
   if (botChoice === 'skill') {
     bot.skillReady = false; botChoice = 'attack'; bUsedActiveSkill = true;
@@ -606,7 +609,6 @@ function playTurn(playerChoice) {
   pAttack += pBonus; bAttack += bBonus;
   if (pDouble) pAttack *= 2; if (bDouble) bAttack *= 2;
 
-  // НОВАЯ УНИВЕРСАЛЬНАЯ СИСТЕМА СТОЛКНОВЕНИЙ
   let pAttacking = (playerChoice === 'attack' || playerChoice === 'immortal');
   let bAttacking = (botChoice === 'attack' || botChoice === 'immortal');
   let pDefending = (playerChoice === 'defend' || playerChoice === 'immortal');
@@ -658,7 +660,7 @@ function playTurn(playerChoice) {
       logMsg += resolveCombat(bot, player, bAttack, (bIgnore ? 0 : pDefVal), "Враг", REAL_PLAYER_NAME, bIgnore, bUsedActiveSkill);
   }
 
-  // Шлемы и Воины (с проверкой canHeal)
+  // Шлемы и Воины 
   if (player.canHeal && player.hp < player.maxHp && player.eqP.healOnce > 0) { 
     let deficit = player.maxHp - player.hp; let healAmt = Math.min(deficit, player.eqP.healOnce); 
     player.hp += healAmt; player.eqP.healOnce -= healAmt; 
@@ -677,6 +679,12 @@ function playTurn(playerChoice) {
   
   // Снимаем броню первого хода бессмертия
   player.immortalTurnActive = false; bot.immortalTurnActive = false;
+
+  // ЗАДАЧА 4: Яд и HoT применяются в конце хода
+  if (player.poisoned) { player.hp -= 1; logMsg += `<span class="text-dmg">☠️ Яд: 1 урон вам!</span><br>`; logMsg += checkImmortality(player, REAL_PLAYER_NAME); }
+  if (bot.poisoned) { bot.hp -= 1; logMsg += `<span class="text-heal">☠️ Яд: 1 урон врагу!</span><br>`; logMsg += checkImmortality(bot, "Враг"); }
+  logMsg += processHoT(player, bot, REAL_PLAYER_NAME, "Враг"); 
+  logMsg += processHoT(bot, player, "Враг", REAL_PLAYER_NAME);
 
   checkSkills(player, bot, "Вы"); checkSkills(bot, player, "Враг");
   logToScreen(logMsg); updateScreen(); checkWinner();
