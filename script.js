@@ -1275,12 +1275,13 @@ function playTurn(playerChoice) {
   }
 
   if (!bot.isMob) {
-    if (player.furyTurnsLeft > 0) player.furyTurnsLeft--; if (bot.furyTurnsLeft > 0) bot.furyTurnsLeft--;
-    if (player.immortalTurns > 0) player.immortalTurns--; if (bot.immortalTurns > 0) bot.immortalTurns--;
-  } else {
-    if (player.furyTurnsLeft > 0) player.furyTurnsLeft--;
-    if (player.immortalTurns > 0) player.immortalTurns--;
-  }
+      if (player.furyTurnsLeft > 0) player.furyTurnsLeft--;
+      if (bot.furyTurnsLeft > 0) bot.furyTurnsLeft--;
+      if (bot.immortalTurns > 0) bot.immortalTurns--;
+    } else {
+      if (player.furyTurnsLeft > 0) player.furyTurnsLeft--;
+    }
+  // immortalTurns игрока уменьшаем ПОСЛЕ updateScreen — в конце хода
 
   // ЭФФЕКТЫ (яд, HoT, пассивки)
   let effectsMsg = "";
@@ -1318,9 +1319,10 @@ function playTurn(playerChoice) {
   if (!bot.isMob && bot.canHeal && bot.classId === 'warrior' && bot.hp > 0 && bot.hp <= 6) { bot.hp += 1; effectsMsg += `<span class="text-heal">🩸 Боевой раж: ${currentBotName} +1 ХП</span><br>`; }
 
   // ФИКС РЫЦАРЯ: сбрасываем immortalTurnActive ПОСЛЕ всех эффектов
-  player.immortalTurnActive = false;
-  if (!bot.isMob) bot.immortalTurnActive = false;
-
+  if (player.immortalTurns > 0) player.immortalTurns--;
+    player.immortalTurnActive = false;
+    if (!bot.isMob) bot.immortalTurnActive = false;
+  
   if (effectsMsg !== "") {
     logMsg += `<div class="text-skill" style="margin-top: 10px; margin-bottom: 5px;">🧿 Эффекты:</div>` + effectsMsg;
   }
