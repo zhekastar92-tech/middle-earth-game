@@ -35,6 +35,10 @@ const CLASSES = {
   darkknight: { name: "Тёмный Рыцарь", activeName: "Тёмная ярость", reqType: "healed", reqAmt: 3, p1: "Кураж", p2: "Бессмертие" }
 };
 
+const SLOT_NAMES = { head: "Шлем", body: "Броня", arms: "Перчатки", legs: "Сапоги" };
+const RARITY_NAMES = { common: "Обычный", uncommon: "Необычный", rare: "Редкий", epic: "Эпический" };
+const SELL_PRICES = { common: 10, uncommon: 50, rare: 200, epic: 1000 };
+
 // ЗАДАЧА 1: Автоматическая миграция экипировки
 Object.keys(CLASSES).forEach(cls => {
     if (!gameData.equip[cls]) {
@@ -123,11 +127,6 @@ function calculateLpChange(lp, isWin) {
   else { if (isWin) { min = 5; max = 10; } else { min = 15; max = 20; } }
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-
-
-const SLOT_NAMES = { head: "Шлем", body: "Броня", arms: "Перчатки", legs: "Сапоги" };
-const RARITY_NAMES = { common: "Обычный", uncommon: "Необычный", rare: "Редкий", epic: "Эпический" };
-const SELL_PRICES = { common: 10, uncommon: 50, rare: 200, epic: 1000 };
 
 function switchTab(btn, tabId) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
