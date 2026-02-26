@@ -15,6 +15,7 @@ let gameData = {
   dungeonProgress: {},
   pouch: { slots: 0, items: [] },
   dailyWins: 0
+  dailyGiftClaimed: false
 };
 
 try {
@@ -31,6 +32,7 @@ try {
     gameData.dungeonProgress = saved.dungeonProgress || {};
     gameData.pouch = saved.pouch || { slots: 0, items: [] };
     gameData.dailyWins = saved.dailyWins || 0;
+    gameData.dailyGiftClaimed = saved.dailyGiftClaimed || false;
   }
 } catch (e) {}
 
@@ -45,6 +47,11 @@ const CLASSES = {
 const SLOT_NAMES = { head: "Шлем", body: "Броня", arms: "Перчатки", legs: "Сапоги" };
 const RARITY_NAMES = { common: "Обычный", uncommon: "Необычный", rare: "Редкий", epic: "Эпический" };
 const SELL_PRICES = { common: 10, uncommon: 50, rare: 200, epic: 1000 };
+const POTIONS = {
+  small:  { id: 'small',  name: '🧪 Малое зелье',   heal: 8,  cost: 350 },
+  medium: { id: 'medium', name: '🧪 Среднее зелье',  heal: 13, cost: 450 },
+  large:  { id: 'large',  name: '🧪 Большое зелье',  heal: 20, cost: 650 }
+};
 
 // Миграция экипировки для новых классов
 Object.keys(CLASSES).forEach(cls => {
@@ -548,6 +555,15 @@ function renderMainMenu() {
     <div style="font-size:24px;">🔄</div>
   `;
   document.getElementById("menu-class-display").innerHTML = classHtml;
+  // Ежедневный подарок
+  let giftEl = document.getElementById("menu-daily-gift");
+  if (gameData.dailyGiftClaimed) {
+    giftEl.innerHTML = `<div style="color:#64748b; font-size:13px; padding: 12px;">🎁 Ежедневный подарок — получен. Завтра будет новый!</div>`;
+  } else if (gameData.dailyWins >= 5) {
+    giftEl.innerHTML = `<button class="btn-fight-huge" style="font-size:14px; padding:12px;" onclick="claimDailyGift()">🎁 Забрать подарок!</button>`;
+  } else {
+    giftEl.innerHTML = `<div style="background:rgba(30,41,59,0.8); border:1px solid #475569; border-radius:12px; padding:12px; color:#94a3b8; font-size:13px;">🎁 Ежедневный подарок — ${gameData.dailyWins}/5 побед на арене</div>`;
+  }
 }
 
 function openClassModal() {
@@ -829,6 +845,31 @@ function buyDungeonKey(keyId) {
   alert(`Куплен ${dungeon.keyName}!`);
 }
 
+function getPouchSlotCost() {
+  let s = gameData.pouch.slots;
+  if (s >= 6) return null;
+  return 2000 * Math.pow(2, s); // 2000, 4000, 8000, 16000, 32000, 64000
+}
+
+function buyPouchSlot() {
+  let cost = getPouchSlotCost();
+  if (!cost || gameData.imperials < cost) { alert("Недостаточно Империалов!"); return; }
+  gameData.imperials -= cost;
+  gameData.pouch.slots++;
+  saveData(); renderShop();
+}
+
+function buyPotion(type) {
+  let potion = POTIONS[type];
+  if (gameData.imperials < potion.cost) { alert("Недостаточно Империалов!"); return; }
+  if (gameData.pouch.items.length >= gameData.pouch.slots) { 
+    alert("Подсумок полон! Купите новые слоты у Герольда Кожевника."); return; 
+  }
+  gameData.imperials -= potion.cost;
+  gameData.pouch.items.push({ type: type, name: potion.name, heal: potion.heal });
+  saveData(); renderShop();
+}
+
 function renderShop() {
   let slotCost = getNextSlotCost(); let slotText = slotCost ? `+3 слота за ${slotCost} 🪙` : `Сумка максимальна (18)`;
   let pity = gameData.hugeChestPity || 0;
@@ -855,13 +896,34 @@ function renderShop() {
     <div class="class-card arena-stone" style="border: 2px solid #94a3b8; text-align: left;">
         <div class="class-title" style="color:#fbbf24">🎒 Герольд Кожевник</div>
         <div class="class-desc" style="margin-bottom: 10px;">Увеличивает вместимость вашей сумки. Текущий размер: ${gameData.maxInventory}/18.</div>
-        <button class="action-btn" style="background: ${slotCost && gameData.imperials >= slotCost ? '#22c55e' : '#475569'}; padding: 10px; width: 100%; font-size:12px;" ${(!slotCost || gameData.imperials < slotCost) ? 'disabled' : ''} onclick="buyBagSlots()">🛒 ${slotText}</button>
+        <button class="action-btn" style="background: ${slotCost && gameData.imperials >= slotCost ? '#22c55e' : '#475569'}; padding: 10px; width: 100%; font-size:12px; margin-bottom:8px;" ${(!slotCost || gameData.imperials < slotCost) ? 'disabled' : ''} onclick="buyBagSlots()">🛒 ${slotText}</button>
+        <div style="border-top: 1px solid #475569; margin: 10px 0; padding-top: 10px;">
+            <div style="font-size:12px; color:#94a3b8; margin-bottom:8px;">🧰 Подсумок (для зелий): ${gameData.pouch.slots}/6 слотов</div>
+            ${(() => { let pc = getPouchSlotCost(); return pc ? `<button class="action-btn" style="background:${gameData.imperials >= pc ? '#0369a1' : '#475569'}; padding: 10px; width: 100%; font-size:12px;" ${gameData.imperials < pc ? 'disabled' : ''} onclick="buyPouchSlot()">🧰 +1 слот подсумка — ${pc} 🪙</button>` : `<div style="color:#22c55e; font-size:12px;">Подсумок максимален (6 слотов)</div>`; })()}
+        </div>
     </div>
 
     <div class="class-card" style="margin-top: 20px; border: 2px solid #b45309; text-align: left; background: rgba(30,20,5,0.8);">
         <div class="class-title" style="color:#f59e0b">🧕🏿 Дядюшка Ибн</div>
         <div class="class-desc" style="margin-bottom: 10px;">Торгует ключами от подземелий. Знает все тайные входы.</div>
         ${keysHtml}
+    </div>
+
+    <div class="class-card" style="margin-top: 20px; border: 2px solid #7c3aed; text-align: left; background: rgba(20,10,40,0.8);">
+        <div class="class-title" style="color:#c084fc">🔮 Лавка алхимика</div>
+        <div class="class-desc" style="margin-bottom: 10px;">Зелья для подземелий. Подсумок: ${gameData.pouch.items.length}/${gameData.pouch.slots} слотов.</div>
+        ${Object.values(POTIONS).map(p => `
+        <div style="display:flex; justify-content:space-between; align-items:center; background: rgba(15,23,42,0.6); padding: 10px; border-radius: 8px; margin-bottom: 8px;">
+            <div style="text-align:left;">
+                <div style="font-weight:bold; color:#e9d5ff;">${p.name}</div>
+                <div style="font-size:11px; color:#94a3b8;">+${p.heal} ХП</div>
+            </div>
+            <button class="action-btn" style="background:${gameData.imperials >= p.cost && gameData.pouch.items.length < gameData.pouch.slots ? '#6d28d9' : '#475569'}; padding: 8px 12px; font-size:12px; flex:0;" 
+                ${gameData.imperials < p.cost || gameData.pouch.items.length >= gameData.pouch.slots ? 'disabled' : ''} 
+                onclick="buyPotion('${p.id}')">
+                ${p.cost} 🪙
+            </button>
+        </div>`).join('')}
     </div>
 
     <h3 style="margin-top: 20px; color:#f43f5e">🎲 Азартный Бак</h3>
@@ -1535,6 +1597,9 @@ function checkWinner() {
         endMsg = `<span class='text-dmg'>💀 ВЫ ПРОИГРАЛИ!</span> <span class="lp-loss">(-${lpLoss} LP)</span>`;
       } else {
         let lpGain = calculateLpChange(gameData.lp, true); gameData.lp += lpGain;
+        if (!gameData.dailyGiftClaimed) {
+          gameData.dailyWins = Math.min(5, (gameData.dailyWins || 0) + 1);
+        }
         endMsg = `<span class='text-heal'>🏆 ПОБЕДА!</span> <span class="lp-gain">(+${lpGain} LP)</span><br>`;
         let loot = rollLoot(gameData.lp);
         if (loot) {
@@ -1660,6 +1725,14 @@ function continueToNextFloor() {
 function exitDungeon() {
   dungeonState = null;
   returnToMenu();
+}
+
+function claimDailyGift() {
+  if (gameData.dailyWins < 5 || gameData.dailyGiftClaimed) return;
+  gameData.dailyGiftClaimed = true;
+  gameData.keys['dusty_key'] = (gameData.keys['dusty_key'] || 0) + 1;
+  saveData(); renderMainMenu();
+  alert('🎁 Подарок получен! +1 🗝️ Пыльный ключ');
 }
 
 // ============================================================
