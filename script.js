@@ -768,8 +768,7 @@ function playTurn(playerChoice) {
 
   if (player.furyTurnsLeft > 0) player.furyTurnsLeft--; if (bot.furyTurnsLeft > 0) bot.furyTurnsLeft--;
   if (player.immortalTurns > 0) player.immortalTurns--; if (bot.immortalTurns > 0) bot.immortalTurns--;
-  player.immortalTurnActive = false; bot.immortalTurnActive = false;
-
+  
   // ГРУППИРОВКА ЭФФЕКТОВ
   let effectsMsg = "";
   if (player.poisoned) { player.hp -= 1; effectsMsg += `<span class="text-dmg">☠️ Яд: 1 урон ${REAL_PLAYER_NAME}!</span><br>`; effectsMsg += checkImmortality(player, REAL_PLAYER_NAME); }
@@ -790,6 +789,7 @@ function playTurn(playerChoice) {
   }
   if (player.canHeal && player.classId === 'warrior' && player.hp > 0 && player.hp <= 6) { player.hp += 1; effectsMsg += `<span class="text-heal">🩸 Боевой раж: ${REAL_PLAYER_NAME} +1 ХП</span><br>`; }
   if (bot.canHeal && bot.classId === 'warrior' && bot.hp > 0 && bot.hp <= 6) { bot.hp += 1; effectsMsg += `<span class="text-heal">🩸 Боевой раж: ${currentBotName} +1 ХП</span><br>`; }
+  player.immortalTurnActive = false; bot.immortalTurnActive = false;
 
   if (effectsMsg !== "") {
       logMsg += `<div class="text-skill" style="margin-top: 10px; margin-bottom: 5px;">🧿 Эффекты:</div>` + effectsMsg;
