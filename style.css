@@ -166,6 +166,16 @@ h1, h2, h3 { color: #fbbf24; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-top:
 .lb-player { border-color: #e11d48; background: rgba(225, 29, 72, 0.1); box-shadow: 0 0 15px rgba(225, 29, 72, 0.3); }
 .lb-divider { text-align: center; color: #94a3b8; font-weight: bold; margin: 15px 0; font-size: 20px;}
 
+/* === ПОДЗЕМЕЛЬЯ === */
+.dungeon-mansion {
+  background: linear-gradient(to bottom, #374151, #1c1917);
+  border: 2px solid #4b5563;
+}
+
+.border-mob-normal { border: 2px solid #6b7280; }
+.border-mob-elite  { border: 2px solid #f59e0b; box-shadow: 0 0 12px rgba(245,158,11,0.4); }
+.border-mob-boss   { border: 2px solid #e11d48; box-shadow: 0 0 20px rgba(225,29,72,0.5); }
+
 /* === ТАЙМЕР ХОДА (Текстовый) === */
 #turn-timer-container {
   width: 100%;
