@@ -1749,6 +1749,7 @@ function openArenaModal(idx) {
   document.getElementById('item-modal').style.display = 'flex';
 }
 
+<button onclick="debugGold()" style="position:fixed; bottom:10px; right:10px; z-index:9999; opacity:0.3; font-size:10px; padding:5px; background:#333; color:#fff; border:none; border-radius:4px;">💰 DEV</button>
 // ============================================================
 // СТАРТ
 // ============================================================
