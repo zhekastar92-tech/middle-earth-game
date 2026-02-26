@@ -13,7 +13,7 @@ let gameData = {
   equip: { warrior: { head: null, body: null, arms: null, legs: null } },
   keys: {},
   dungeonProgress: {},
-  pouch: { slots: 3, items: [] },
+  pouch: { slots: 0, items: [] },
   dailyWins: 0
 };
 
@@ -29,7 +29,7 @@ try {
     if (saved.leaderboard && saved.leaderboard.length === 50) gameData.leaderboard = saved.leaderboard;
     gameData.keys = saved.keys || {};
     gameData.dungeonProgress = saved.dungeonProgress || {};
-    gameData.pouch = saved.pouch || { slots: 3, items: [] };
+    gameData.pouch = saved.pouch || { slots: 0, items: [] };
     gameData.dailyWins = saved.dailyWins || 0;
   }
 } catch (e) {}
@@ -66,9 +66,12 @@ const DUNGEONS = {
     keyId: 'dusty_key',
     keyName: '🗝️ Пыльный ключ',
     keyShopPrice: 2000,
-    keyArenaDropChance: 0.04, // 4% с третьей арены
-    keyArenaMinLp: 600,       // минимум LP для дропа ключа (3-я арена)
-    floors: [
+    keyArenaDrops: [
+      { minLp: 1001, maxLp: 1800, chance: 0.05 },
+      { minLp: 1801, maxLp: 3000, chance: 0.07 },
+      { minLp: 3001, maxLp: 99999, chance: 0.10 }
+    ],
+     floors: [
       { enemies: ['wanderer'] },
       { enemies: ['wanderer', 'wanderer'] },
       { enemies: ['wanderer', 'wanderer', 'observer'] },
@@ -581,11 +584,10 @@ function rollLoot(lp) {
 function rollArenaKey(lp) {
   let msg = "";
   Object.values(DUNGEONS).forEach(dungeon => {
-    if (lp >= dungeon.keyArenaMinLp) {
-      if (Math.random() < dungeon.keyArenaDropChance) {
-        gameData.keys[dungeon.keyId] = (gameData.keys[dungeon.keyId] || 0) + 1;
-        msg += `<br><span class="text-skill">🗝️ Выпал ${dungeon.keyName}! Проверьте вкладку Подземелий.</span>`;
-      }
+    let dropEntry = dungeon.keyArenaDrops.find(d => lp >= d.minLp && lp <= d.maxLp);
+    if (dropEntry && Math.random() < dropEntry.chance) {
+      gameData.keys[dungeon.keyId] = (gameData.keys[dungeon.keyId] || 0) + 1;
+      msg += `<br><span class="text-skill">🗝️ Выпал ${dungeon.keyName}! Проверьте вкладку Подземелий.</span>`;
     }
   });
   return msg;
