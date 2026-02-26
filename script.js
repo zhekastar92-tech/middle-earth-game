@@ -14,7 +14,7 @@ let gameData = {
   keys: {},
   dungeonProgress: {},
   pouch: { slots: 0, items: [] },
-  dailyWins: 0
+  dailyWins: 0,
   dailyGiftClaimed: false
 };
 
