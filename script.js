@@ -92,7 +92,7 @@ const DUNGEON_MOBS = {
     name: 'Весёлый скиталец',
     icon: '👻',
     tier: 'normal',
-    hp: 25,
+    hp: 20,
     attackMin: 1, attackMax: 3,
     blockMin: 1, blockMax: 2,
     abilities: [],
@@ -103,23 +103,23 @@ const DUNGEON_MOBS = {
     name: 'Наблюдатель',
     icon: '👽',
     tier: 'elite',
-    hp: 30,
+    hp: 25,
     attackMin: 1, attackMax: 3,
     blockMin: 1, blockMax: 2,
     abilities: ['disease'],
     lootDrops: { rare: 0.50, epic: 0.03 }
   },
   sylvia: {
-    id: 'sylvia',
-    name: 'Леди Сильвия',
-    icon: '🧕',
-    tier: 'boss',
-    hp: 35,
-    attackMin: 2, attackMax: 4,
-    blockMin: 1, blockMax: 3,
-    abilities: ['fate', 'submit', 'notover'],
-    lootDrops: null // Босс — отдельная логика наград
-  }
+  id: 'sylvia',
+  name: 'Леди Сильвия',
+  icon: '🧕',
+  tier: 'boss',
+  hp: 30,
+  attackMin: 1, attackMax: 3,
+  blockMin: 1, blockMax: 3,
+  abilities: ['fate', 'submit', 'notover'],
+  lootDrops: null
+},
 };
 
 // ============================================================
@@ -127,13 +127,6 @@ const DUNGEON_MOBS = {
 // ============================================================
 
 let dungeonState = null;
-// dungeonState = {
-//   dungeonId, floorIndex, enemyIndex,
-//   playerHp (сохраняется между врагами),
-//   enemyQueue (массив объектов мобов текущего этажа),
-//   currentFloorEnemies (имена для отображения),
-//   mode: 'dungeon'
-// }
 
 function initMob(mobId) {
   let template = DUNGEON_MOBS[mobId];
@@ -280,7 +273,7 @@ function checkMobAbilitiesPreTurn(mob, playerLastDmg) {
       mob.fateActive = true;
       mob.fateTurnsLeft = 3;
       mob.fateNoHitTurns = 0;
-      msg += `<span class="text-dmg">😶 Леди Сильвия произносит: «Прими свою судьбу!» — Вы не можете блокировать 3 хода!</span><br>`;
+      msg += `<span class="text-dmg">😫 Леди Сильвия произносит: «Прими свою судьбу!» — Вы не можете блокировать 3 хода!</span><br>`;
     }
   }
 
@@ -295,10 +288,10 @@ function checkMobAbilitiesPreTurn(mob, playerLastDmg) {
 
   // === ЛЕДИ СИЛЬВИЯ: Это ещё не конец ===
   if (mob.abilities.includes('notover') && !mob.notoverUsed && mob.hp <= 15 && mob.hp > 0) {
-    mob.notoverUsed = true;
-    mob.hp = Math.min(mob.maxHp, mob.hp + 5);
-    mob.notoverHotLeft = 2;
-    msg += `<span class="text-heal">💜 Леди Сильвия шепчет: «Это ещё не конец...» — +5 ХП и +3 ХП в течение 2 ходов!</span><br>`;
+  mob.notoverUsed = true;
+  mob.hp = Math.min(mob.maxHp, mob.hp + 3);
+  mob.notoverHotLeft = 2;
+  msg += `<span class="text-heal">💜 Леди Сильвия шепчет: «Это ещё не конец...» — +3 ХП!</span><br>`;
   }
 
   return msg;
@@ -338,9 +331,9 @@ function tickMobEffects(mob, playerDmgThisTurn) {
 
   // Сильвия: HoT "Это ещё не конец"
   if (mob.notoverHotLeft > 0) {
-    mob.hp = Math.min(mob.maxHp, mob.hp + 3);
-    mob.notoverHotLeft--;
-    msg += `<span class="text-heal">💜 Воля Сильвии: +3 ХП (осталось ${mob.notoverHotLeft} хода)</span><br>`;
+  mob.hp = Math.min(mob.maxHp, mob.hp + 2);
+  mob.notoverHotLeft--;
+  msg += `<span class="text-heal">💜 Воля Сильвии: +2 ХП (осталось ${mob.notoverHotLeft} хода)</span><br>`;
   }
 
   // Сильвия: если нанесла урон в этот ход — сбрасываем счётчик безурона
@@ -1684,11 +1677,11 @@ function openCharModal(isPlayer) {
     if (c.abilities.length > 0) {
       desc += `<hr style="border-color:#475569; margin:10px 0;"><b>Умения:</b><br>`;
       c.abilities.forEach(a => {
-        if (a === 'disease') desc += `🦠 <b>Болезнь</b> — блокирует лечение на 3 хода (триггер: каждые -10 ХП)<br>`;
-        if (a === 'fate') desc += `😶 <b>Прими судьбу</b> — отключает блок игрока на 3 хода (триггер: 3 хода без урона)<br>`;
-        if (a === 'submit') desc += `😡 <b>Подчинись мне</b> — x2 урон на 2 хода (триггер: игрок нанёс 4+ урона)<br>`;
-        if (a === 'notover') desc += `💜 <b>Это ещё не конец</b> — +5 ХП + HoT 3 хп x2 хода (триггер: ХП ≤ 15, одноразово)<br>`;
-      });
+        if (a === 'disease') desc += `🦠 <b>Болезнь</b> — блокирует лечение на 3 хода<br>`;
+        if (a === 'fate') desc += `😶 <b>Прими судьбу</b> — отключает блок игрока на 3 хода<br>`;
+        if (a === 'submit') desc += `😡 <b>Подчинись мне</b> — x2 урон на 2 хода<br>`;
+        if (a === 'notover') desc += `💜 <b>Это ещё не конец</b> — мгновенное восстановление и регенерация<br>`;
+     });
     }
   } else if (!bot.isMob || isPlayer) {
     desc += `<hr style="border-color:#475569; margin:10px 0;"><b>Экипировка:</b><br><br>`;
@@ -1748,24 +1741,7 @@ function openArenaModal(idx) {
   document.getElementById('modal-actions').innerHTML = '';
   document.getElementById('item-modal').style.display = 'flex';
 }
-function debugGold() {
-  gameData.imperials += 50000;
-  gameData.lp += 500;
-  gameData.keys['dusty_key'] = (gameData.keys['dusty_key'] || 0) + 10;
 
-  // Эпики с уником на все слоты для всех классов
-  const slots = ['head', 'body', 'arms', 'legs'];
-  Object.keys(CLASSES).forEach(cls => {
-    slots.forEach(slot => {
-      let item = generateItem('epic', slot, true);
-      item.classId = cls;
-      gameData.equip[cls][slot] = item;
-    });
-  });
-
-  saveData();
-  alert('DEV: +50к золота, +500 LP, +10 ключей, эпики на всех героях');
-}
 // ============================================================
 // СТАРТ
 // ============================================================
