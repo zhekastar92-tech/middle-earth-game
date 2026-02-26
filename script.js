@@ -1325,9 +1325,13 @@ function playTurn(playerChoice) {
     logMsg += `<div class="text-skill" style="margin-top: 10px; margin-bottom: 5px;">🧿 Эффекты:</div>` + effectsMsg;
   }
 
-  if (!bot.isMob) checkSkills(player, bot, REAL_PLAYER_NAME);
-  else checkSkillsPlayerOnly(player, REAL_PLAYER_NAME);
-
+  if (!bot.isMob) {
+    checkSkills(player, bot, REAL_PLAYER_NAME);
+    checkSkills(bot, player, currentBotName);
+  } else {
+    checkSkillsPlayerOnly(player, REAL_PLAYER_NAME);
+  }
+  
   logToScreen(logMsg); updateScreen(); checkWinner();
 
   if (!gameIsOver) {
