@@ -1748,8 +1748,24 @@ function openArenaModal(idx) {
   document.getElementById('modal-actions').innerHTML = '';
   document.getElementById('item-modal').style.display = 'flex';
 }
+function debugGold() {
+  gameData.imperials += 50000;
+  gameData.lp += 500;
+  gameData.keys['dusty_key'] = (gameData.keys['dusty_key'] || 0) + 10;
 
-<button onclick="debugGold()" style="position:fixed; bottom:10px; right:10px; z-index:9999; opacity:0.3; font-size:10px; padding:5px; background:#333; color:#fff; border:none; border-radius:4px;">💰 DEV</button>
+  // Эпики с уником на все слоты для всех классов
+  const slots = ['head', 'body', 'arms', 'legs'];
+  Object.keys(CLASSES).forEach(cls => {
+    slots.forEach(slot => {
+      let item = generateItem('epic', slot, true);
+      item.classId = cls;
+      gameData.equip[cls][slot] = item;
+    });
+  });
+
+  saveData();
+  alert('DEV: +50к золота, +500 LP, +10 ключей, эпики на всех героях');
+}
 // ============================================================
 // СТАРТ
 // ============================================================
