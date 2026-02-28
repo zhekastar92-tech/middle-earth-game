@@ -1876,12 +1876,12 @@ const GACHA_POOLS = {
   },
   assassin: {
     id: 'assassin',
-    hidden: true,
+    hidden: false,
     isLegendaryPool: true,
     name: 'Космический Захватчик Убийца',
     tagline: 'Мир обречён... Космический Захватчик Убийца уже здесь...',
     classId: 'assassin',
-    icon: '🌙',
+    icon: '☄️',
     color: '#7c3aed',
     borderColor: '#6d28d9',
     titles: {
