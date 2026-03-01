@@ -1,0 +1,797 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+
+body { font-family: 'Montserrat', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: #e2e8f0; text-align: center; margin: 0; padding: 0; min-height: 100vh;}
+h1, h2, h3 { color: #fbbf24; text-shadow: 0 2px 4px rgba(0,0,0,0.5); margin-top: 15px;}
+
+.nav-menu {
+  display: flex;
+  background: rgba(10, 15, 30, 0.97);
+  overflow-x: auto;
+  white-space: nowrap;
+  border-bottom: 2px solid #e11d48;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.nav-menu::-webkit-scrollbar { display: none; }
+.nav-tab {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: color 0.2s;
+  border-bottom: 3px solid transparent;
+}
+.nav-tab.active {
+  color: #fff;
+  border-bottom: 3px solid #e11d48;
+  text-shadow: 0 0 10px rgba(225, 29, 72, 0.6);
+  background: rgba(225,29,72,0.08);
+}
+.nav-tab:hover:not(.active) { color: #94a3b8; }
+.nav-tab.disabled { cursor: not-allowed; opacity: 0.5; }
+
+.tab-content { display: none; padding: 15px; max-width: 600px; margin: 0 auto; }
+.tab-content.active { display: block; }
+
+.profile-header { background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 15px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #475569;}
+.profile-name { font-size: 18px; font-weight: bold; color: #fff; }
+.profile-rank { font-size: 14px; color: #fbbf24; }
+.rank-badge { font-size: 12px; font-weight: bold; color: #cbd5e1; background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 6px; display: inline-block; margin-bottom: 10px;}
+
+.class-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+.class-card { background: rgba(30, 41, 59, 0.7); border: 2px solid #334155; padding: 20px 15px; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+.class-card:hover { border-color: #e11d48; box-shadow: 0 8px 15px rgba(225, 29, 72, 0.3); }
+.class-title { font-size: 18px; font-weight: 900; margin-bottom: 8px; color: #fbbf24;}
+.class-desc { font-size: 11px; color: #cbd5e1; text-align: left; line-height: 1.4; }
+
+/* === АРЕНА И ОФОРМЛЕНИЕ РАНГОВ === */
+.arena { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 15px; padding: 15px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.6);}
+.character { background: rgba(30, 41, 59, 0.85); padding: 15px; border-radius: 12px; width: 50%; box-sizing: border-box; display: flex; flex-direction: column; transition: border-color 0.5s, box-shadow 0.5s;}
+/* Когда активна косметическая рамка — убираем дефолтный background чтобы рамка работала */
+.character.has-frame { background: transparent; }
+/* Скрыть карточку до эффекта — через класс, не inline style */
+.character.entry-hidden { opacity: 0 !important; }
+/* Для эффектов появления — overflow visible чтобы кольцо radiance не обрезалось */
+.character.entry-active { overflow: visible; }
+.char-name { font-size: 14px; margin: 0 0 5px 0; font-weight: 700; line-height: 1.2; min-height: 34px; color: #fff;}
+
+/* Фоны Арен (Задний план боя) */
+.arena-stone { background: #4b5563; border: 2px solid #374151; }
+.arena-moon { background: #9ca3af; border: 2px solid #d1d5db; box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
+.arena-sun { background: linear-gradient(to bottom, #fef08a, #a16207); border: 2px solid #eab308; box-shadow: inset 0 0 20px rgba(234,179,8,0.4); }
+.arena-crystal { background: linear-gradient(to bottom, #bfdbfe, #1e3a8a); border: 2px solid #3b82f6; box-shadow: inset 0 0 25px rgba(59,130,246,0.5); }
+.arena-black { background: linear-gradient(to bottom, #000000, #4c1d95); border: 2px solid #7c3aed; box-shadow: inset 0 0 30px rgba(124,58,237,0.6); animation: pulseBg 3s infinite alternate; }
+.arena-stars { background: linear-gradient(135deg, #020617, #450a0a, #172554, #2e1065); border: 2px solid #f43f5e; box-shadow: inset 0 0 40px rgba(244,63,94,0.5); background-size: 200% 200%; animation: pulseStars 4s infinite alternate; }
+
+@keyframes pulseBg { 0% { box-shadow: inset 0 0 10px rgba(124,58,237,0.4); } 100% { box-shadow: inset 0 0 40px rgba(124,58,237,0.8); } }
+@keyframes pulseStars { 0% { background-position: 0% 50%; box-shadow: inset 0 0 20px rgba(244,63,94,0.4); } 100% { background-position: 100% 50%; box-shadow: inset 0 0 60px rgba(250,204,21,0.6); } }
+
+/* Рамки персонажей (Ранги) */
+.border-iron { border: 2px solid transparent; box-shadow: none; }
+.border-bronze { border: 2px solid #8b5a2b; box-shadow: none; }
+.border-silver { border: 2px solid #c0c0c0; box-shadow: none; }
+.border-gold { border: 2px solid #facc15; box-shadow: none; }
+.border-emerald { border: 2px solid #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.6); }
+.border-diamond { border: 2px solid #0ea5e9; box-shadow: 0 0 20px rgba(14, 165, 233, 0.7); }
+.border-master { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(to right, #ef4444, #facc15) border-box; box-shadow: 0 0 25px rgba(239, 68, 68, 0.6); }
+.border-grandmaster { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(to right, #2563eb, #7dd3fc) border-box; box-shadow: 0 0 25px rgba(37, 99, 235, 0.6); }
+.border-overlord { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(135deg, #000000, #a855f7, #000000) border-box; box-shadow: 0 0 20px #6b21a8, inset 0 0 15px #4c1d95; animation: overlordPulse 3s infinite alternate;}
+.border-phoenix { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(to top, #ea580c, #ef4444, #facc15) border-box; box-shadow: 0 0 30px #ef4444, 0 -5px 15px #facc15, inset 0 0 20px #ea580c; animation: borderFire 1.5s infinite alternate; }
+
+@keyframes overlordPulse { 0% {box-shadow: 0 0 15px #4c1d95, inset 0 0 10px #000;} 100% {box-shadow: 0 0 35px #a855f7, inset 0 0 25px #6b21a8;} }
+@keyframes borderFire { 0% {box-shadow: 0 0 20px #ef4444, 0 -2px 10px #facc15, inset 0 0 10px #ea580c;} 100% {box-shadow: 0 0 45px #ef4444, 0 -10px 25px #facc15, inset 0 0 30px #ea580c;} }
+
+/* Эффекты свечения Ников (Ранги) */
+.text-master { background: linear-gradient(to right, #ef4444, #facc15); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+.text-grandmaster { background: linear-gradient(to right, #2563eb, #7dd3fc); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 10px rgba(37, 99, 235, 0.5); }
+.text-emerald { background: linear-gradient(to right, #10b981, #34d399); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+.text-diamond { background: linear-gradient(to right, #0ea5e9, #7dd3fc); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 10px rgba(14, 165, 233, 0.5); }
+.text-overlord { background: linear-gradient(to bottom, #d8b4fe, #4c1d95); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 15px #7c3aed; }
+.text-phoenix { background: linear-gradient(to top, #facc15, #ef4444); -webkit-background-clip: text; color: transparent; text-shadow: 0 -2px 10px rgba(239,68,68,0.8), 0 2px 15px rgba(250,204,21,0.6); animation: textFire 1s infinite alternate;}
+.bar-container { background: #0f172a; border-radius: 6px; width: 100%; height: 22px; margin-bottom: 8px; border: 1px solid #334155; overflow: hidden; position: relative;}
+/* Рамки персонажей */
+.border-iron { border: 2px solid transparent; box-shadow: none; }
+.border-bronze { border: 2px solid #8b5a2b; box-shadow: none; }
+.border-silver { border: 2px solid #c0c0c0; box-shadow: none; }
+.border-gold { border: 2px solid #facc15; box-shadow: none; }
+.border-emerald { border: 2px solid #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.6); }
+.border-diamond { border: 2px solid #0ea5e9; box-shadow: 0 0 20px rgba(14, 165, 233, 0.7); }
+
+/* Элитные рамки (Градиентные границы + Анимации) */
+.border-master { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(to right, #ef4444, #facc15) border-box; box-shadow: 0 0 25px rgba(239, 68, 68, 0.6); }
+.border-grandmaster { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(to right, #2563eb, #7dd3fc) border-box; box-shadow: 0 0 25px rgba(37, 99, 235, 0.6); }
+.border-overlord { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(135deg, #000000, #a855f7, #000000) border-box; box-shadow: 0 0 20px #6b21a8, inset 0 0 15px #4c1d95; animation: overlordPulse 3s infinite alternate;}
+.border-phoenix { border: 2px solid transparent; background: linear-gradient(rgba(30,41,59,0.85), rgba(30,41,59,0.85)) padding-box, linear-gradient(to top, #ea580c, #ef4444, #facc15) border-box; box-shadow: 0 0 30px #ef4444, 0 -5px 15px #facc15, inset 0 0 20px #ea580c; animation: borderFire 1.5s infinite alternate; }
+
+@keyframes overlordPulse { 0% {box-shadow: 0 0 15px #4c1d95, inset 0 0 10px #000;} 100% {box-shadow: 0 0 35px #a855f7, inset 0 0 25px #6b21a8;} }
+@keyframes borderFire { 0% {box-shadow: 0 0 20px #ef4444, 0 -2px 10px #facc15, inset 0 0 10px #ea580c;} 100% {box-shadow: 0 0 45px #ef4444, 0 -10px 25px #facc15, inset 0 0 30px #ea580c;} }
+
+/* Эффекты свечения Ников */
+.text-master { background: linear-gradient(to right, #ef4444, #facc15); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+.text-emerald { background: linear-gradient(to right, #10b981, #34d399); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+.text-diamond { background: linear-gradient(to right, #0ea5e9, #7dd3fc); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 10px rgba(14, 165, 233, 0.5); }
+.text-grandmaster { background: linear-gradient(to right, #2563eb, #7dd3fc); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 10px rgba(37, 99, 235, 0.5); }
+.text-overlord { background: linear-gradient(to bottom, #d8b4fe, #4c1d95); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 15px #7c3aed; }
+.text-phoenix { background: linear-gradient(to top, #facc15, #ef4444); -webkit-background-clip: text; color: transparent; text-shadow: 0 -2px 10px rgba(239,68,68,0.8), 0 2px 15px rgba(250,204,21,0.6); animation: textFire 1s infinite alternate;}
+
+@keyframes textFire { 0% {text-shadow: 0 -2px 10px rgba(239,68,68,0.8), 0 2px 10px rgba(250,204,21,0.5);} 100% {text-shadow: 0 -5px 20px rgba(234,88,12,0.9), 0 2px 25px rgba(250,204,21,0.8);} }
+.bar-container { background: #0f172a; border-radius: 6px; width: 100%; height: 22px; margin-bottom: 8px; border: 1px solid #334155; overflow: hidden; position: relative;}
+.bar-text { position: absolute; width: 100%; text-align: center; font-size: 12px; font-weight: bold; line-height: 22px; color: white; z-index: 2;}
+.hp-fill { height: 100%; background: linear-gradient(90deg, #be123c, #f43f5e); transition: width 0.4s ease; }
+
+.skills-panel { margin-top: auto; padding-top: 10px; border-top: 1px dashed #475569; display: flex; flex-direction: column; gap: 5px; }
+.skill-slot { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 5px; position: relative; overflow: hidden; }
+.skill-slot-title { font-size: 10px; color: #fbbf24; font-weight: bold; margin-bottom: 2px; position: relative; z-index: 2;}
+.skill-fill { height: 100%; background: linear-gradient(90deg, #0369a1, #0ea5e9); width: 0%; position: absolute; top: 0; left: 0; z-index: 1; opacity: 0.5;}
+.skill-ready-fill { background: linear-gradient(90deg, #b45309, #f59e0b); opacity: 0.8;}
+.skill-progress-text { font-size: 10px; color: #e2e8f0; position: relative; z-index: 2; font-weight: bold;}
+
+.controls { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.action-btn { color: white; border: none; padding: 18px 10px; font-size: 15px; border-radius: 8px; cursor: pointer; font-weight: 900; flex: 1; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+.action-btn:active { transform: scale(0.95); }
+.btn-attack { background: linear-gradient(135deg, #be123c, #e11d48); }
+.btn-defend { background: linear-gradient(135deg, #1d4ed8, #3b82f6); }
+.btn-skill { background: linear-gradient(135deg, #b45309, #f59e0b); color: #fff; display: none; width: 100%; }
+.btn-return { background: linear-gradient(135deg, #15803d, #22c55e); width: 100%; display: none; }
+
+#combat-log { background: rgba(15, 23, 42, 0.7); padding: 15px; height: 300px; overflow-y: auto; text-align: left; border-radius: 12px; font-size: 13px; line-height: 1.6; border: 1px solid #334155; }
+.log-entry { margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; }
+.log-entry:last-child { border-bottom: none; }
+
+.text-dmg { color: #f43f5e; font-weight: bold;} .text-heal { color: #10b981; font-weight: bold;}
+.text-skill { color: #fbbf24; font-weight: bold;} .text-block { color: #94a3b8; }
+.text-info { color: #38bdf8; font-style: italic; font-size: 12px; display: block; margin-top: 4px;}
+.lp-gain { color: #10b981; font-weight: bold; font-size: 16px; } .lp-loss { color: #f43f5e; font-weight: bold; font-size: 16px; }
+
+/* === ИНВЕНТАРЬ И ЭКИПИРОВКА === */
+.imperial-count { background: rgba(30, 41, 59, 0.8); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: bold;}
+.inventory-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.inv-slot { background: rgba(15, 23, 42, 0.8); border: 2px dashed #475569; border-radius: 8px; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; padding: 5px; color: #94a3b8;}
+.inv-slot.filled { border-style: solid; color: #fff; }
+
+.equip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+.equip-slot { background: rgba(30, 41, 59, 0.8); border: 2px solid #475569; border-radius: 12px; padding: 15px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; color: #94a3b8; height: 100px;}
+.stats-panel { background: rgba(15, 23, 42, 0.8); padding: 15px; border-radius: 8px; border: 1px solid #fbbf24; color: #fbbf24; font-weight: bold; font-size: 18px;}
+
+/* Редкости */
+.rarity-common { border-color: #94a3b8 !important; box-shadow: inset 0 0 10px rgba(148,163,184,0.3); }
+.rarity-uncommon { border-color: #22c55e !important; box-shadow: inset 0 0 10px rgba(34,197,94,0.3); }
+.rarity-rare { border-color: #3b82f6 !important; box-shadow: inset 0 0 15px rgba(59,130,246,0.4); }
+.rarity-epic { border-color: #a855f7 !important; box-shadow: inset 0 0 20px rgba(168,85,247,0.5); }
+
+.text-common { color: #94a3b8; } .text-uncommon { color: #22c55e; }
+.text-rare { color: #3b82f6; } .text-epic { color: #a855f7; }
+
+/* Модальное окно */
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center; }
+.modal-content { background: #1e293b; padding: 20px; border-radius: 16px; border: 2px solid #475569; width: 80%; max-width: 400px; }
+.modal-desc { margin: 15px 0; font-size: 13px; line-height: 1.5; color: #cbd5e1; text-align: left; background: #0f172a; padding: 10px; border-radius: 8px;}
+.modal-actions { display: flex; gap: 10px; margin-top: 15px; }
+
+/* === ОГРОМНАЯ КНОПКА В БОЙ === */
+.btn-fight-huge { 
+    background: linear-gradient(135deg, #e11d48, #be123c); 
+    color: white; 
+    border: none; 
+    padding: 15px 30px; 
+    font-size: 20px; 
+    font-weight: 900; 
+    border-radius: 12px; 
+    margin-top: 15px; 
+    cursor: pointer; 
+    text-transform: uppercase; 
+    box-shadow: 0 0 15px rgba(225, 29, 72, 0.6); 
+    animation: pulseFight 2s infinite; 
+    width: 100%;
+}
+@keyframes pulseFight { 0% { transform: scale(1); box-shadow: 0 0 15px rgba(225, 29, 72, 0.6);} 50% { transform: scale(1.02); box-shadow: 0 0 25px rgba(225, 29, 72, 0.9);} 100% { transform: scale(1); box-shadow: 0 0 15px rgba(225, 29, 72, 0.6);} }
+
+/* === ЛИДЕРБОРД === */
+.lb-item { background: rgba(30, 41, 59, 0.8); border: 2px solid #334155; padding: 12px 15px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+.lb-rank { font-weight: 900; font-size: 18px; width: 35px; text-align: left; color: #fbbf24; }
+.lb-name { flex-grow: 1; text-align: left; font-weight: bold; color: #e2e8f0; }
+.lb-lp { font-weight: 900; color: #10b981; }
+.lb-player { border-color: #e11d48; background: rgba(225, 29, 72, 0.1); box-shadow: 0 0 15px rgba(225, 29, 72, 0.3); }
+.lb-divider { text-align: center; color: #94a3b8; font-weight: bold; margin: 15px 0; font-size: 20px;}
+
+/* === ПОДЗЕМЕЛЬЯ === */
+.dungeon-mansion {
+  background: linear-gradient(to bottom, #374151, #1c1917);
+  border: 2px solid #4b5563;
+}
+
+.dungeon-river {
+  background: linear-gradient(to bottom, #164e63, #052e16);
+  border: 2px solid #0891b2;
+  box-shadow: inset 0 0 30px rgba(8,145,178,0.15);
+}
+
+.dungeon-temple {
+  background: linear-gradient(to bottom, #292524, #1c1008);
+  border: 2px solid #d97706;
+  box-shadow: inset 0 0 30px rgba(180,83,9,0.15);
+}
+
+.border-mob-normal { border: 2px solid #6b7280; }
+.border-mob-elite  {
+  border: 2px solid #f59e0b;
+  box-shadow: 0 0 14px rgba(245,158,11,0.5), inset 0 0 20px rgba(245,158,11,0.07);
+  background: linear-gradient(160deg, rgba(30,41,59,0.9) 60%, rgba(120,80,0,0.25));
+}
+.border-mob-boss   {
+  border: 2px solid #dc2626;
+  box-shadow: 0 0 22px rgba(220,38,38,0.7), 0 0 45px rgba(127,29,29,0.4), inset 0 0 25px rgba(180,0,0,0.12);
+  background: linear-gradient(160deg, rgba(30,41,59,0.9) 40%, rgba(100,0,0,0.3));
+  animation: boss-pulse 2.5s ease-in-out infinite;
+}
+@keyframes boss-pulse {
+  0%, 100% { box-shadow: 0 0 22px rgba(220,38,38,0.7), 0 0 45px rgba(127,29,29,0.4), inset 0 0 25px rgba(180,0,0,0.12); }
+  50%       { box-shadow: 0 0 35px rgba(220,38,38,0.95), 0 0 65px rgba(180,0,0,0.6), inset 0 0 30px rgba(200,0,0,0.2); }
+}
+
+/* === ТАЙМЕР ХОДА (Текстовый) === */
+#turn-timer-container {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.8);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #334155;
+  font-weight: bold;
+  color: #cbd5e1;
+  box-sizing: border-box;
+  display: none; /* Скрыт до начала боя */
+}
+#turn-timer-text {
+  color: #10b981; /* Зеленый цвет по умолчанию */
+  font-size: 18px;
+  transition: color 0.3s;
+}
+
+/* === АНИМАЦИЯ ОТКРЫТИЯ СУНДУКА === */
+@keyframes chestPulse {
+  0%   { box-shadow: 0 0 15px var(--chest-color, #94a3b8), 0 0 30px var(--chest-color, #94a3b8)44; transform: scale(1); }
+  100% { box-shadow: 0 0 35px var(--chest-color, #94a3b8), 0 0 70px var(--chest-color, #94a3b8)66; transform: scale(1.06); }
+}
+@keyframes chestShake {
+  0%,100% { transform: rotate(0deg) scale(1.06); }
+  20%      { transform: rotate(-8deg) scale(1.1); }
+  40%      { transform: rotate(8deg) scale(1.1); }
+  60%      { transform: rotate(-5deg) scale(1.08); }
+  80%      { transform: rotate(5deg) scale(1.08); }
+}
+@keyframes itemReveal {
+  0%   { opacity:0; transform: translateY(12px) scale(0.92); }
+  100% { opacity:1; transform: translateY(0) scale(1); }
+}
+
+/* Иконка сундука в модалке */
+#item-modal .modal-content .chest-open-anim {
+  display: inline-block;
+  animation: chestShake 0.7s ease-in-out;
+}
+
+/* Название предмета появляется */
+#item-modal .modal-content .chest-item-name {
+  animation: itemReveal 0.5s ease 0.6s both;
+}
+
+/* Бейдж редкости */
+#item-modal .modal-content .chest-rarity-badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--badge-color, #94a3b8);
+  color: var(--badge-color, #94a3b8);
+  background: color-mix(in srgb, var(--badge-color, #94a3b8) 15%, transparent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  animation: itemReveal 0.4s ease 0.3s both;
+}
+
+
+/* ============================================================
+   ТИТУЛЫ
+   ============================================================ */
+
+.title-uncommon {
+  color: #22c55e;
+  font-weight: bold;
+}
+
+.title-rare {
+  color: #3b82f6;
+  font-weight: bold;
+}
+
+/* ── Эпический: тихая таблетка, мягкий градиент без яркой волны ── */
+.title-epic {
+  display: inline-block;
+  position: relative;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  padding: 2px 10px 2px 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #4a1272, #7e22ce, #9333ea, #7e22ce, #4a1272);
+  background-size: 250% 100%;
+  color: #f3e8ff;
+  overflow: hidden;
+  animation: epic-drift 5s ease-in-out infinite, epic-glow 2.5s ease-in-out infinite;
+}
+@keyframes epic-drift {
+  0%   { background-position: 0% 0%; }
+  50%  { background-position: 100% 0%; }
+  100% { background-position: 0% 0%; }
+}
+@keyframes epic-glow {
+  0%,100% { box-shadow: 0 0 7px rgba(147,51,234,0.5), 0 0 16px rgba(109,40,217,0.2); }
+  50%      { box-shadow: 0 0 13px rgba(168,85,247,0.75), 0 0 28px rgba(147,51,234,0.35); }
+}
+
+/* ── Легендарный: золотая таблетка с бегущей волной ── */
+.title-legendary {
+  display: inline-block;
+  position: relative;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  padding: 2px 10px 2px 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #78350f, #b45309, #f59e0b, #fbbf24, #f59e0b, #b45309, #78350f);
+  background-size: 200% 100%;
+  color: #fff8e7;
+  text-shadow: 0 0 6px rgba(253,230,138,0.6);
+  overflow: hidden;
+  animation: legendary-shimmer 3s linear infinite, legendary-glow 1.8s ease-in-out infinite;
+}
+.title-legendary::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -40%;
+  width: 28%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+  animation: legendary-wave 3s linear infinite;
+}
+@keyframes legendary-shimmer {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+@keyframes legendary-wave {
+  0%   { left: -40%; }
+  100% { left: 130%; }
+}
+@keyframes legendary-glow {
+  0%,100% { box-shadow: 0 0 10px rgba(245,158,11,0.55), 0 0 24px rgba(180,83,9,0.25); }
+  50%      { box-shadow: 0 0 20px rgba(253,230,138,0.85), 0 0 46px rgba(245,158,11,0.45); }
+}
+
+/* ── Мифический: кроваво-красная таблетка, две волны, частицы, мерцание ── */
+.title-mythic-wrap {
+  display: inline-block;
+  position: relative;
+}
+.title-mythic-wrap::before {
+  content: '✦ · ✧ · ✦';
+  position: absolute;
+  top: -10px; left: 0; right: 0;
+  font-size: 6px;
+  color: rgba(252,165,165,0.7);
+  text-align: center;
+  letter-spacing: 3px;
+  animation: mythic-orbit-top 4s ease-in-out infinite;
+  pointer-events: none;
+}
+.title-mythic-wrap::after {
+  content: '✧ · ✦ · ✧';
+  position: absolute;
+  bottom: -10px; left: 0; right: 0;
+  font-size: 6px;
+  color: rgba(239,68,68,0.6);
+  text-align: center;
+  letter-spacing: 3px;
+  animation: mythic-orbit-bot 4s ease-in-out infinite reverse;
+  pointer-events: none;
+}
+@keyframes mythic-orbit-top {
+  0%,100% { opacity: 0.5; transform: translateX(-3px); }
+  50%      { opacity: 1.0; transform: translateX(3px); }
+}
+@keyframes mythic-orbit-bot {
+  0%,100% { opacity: 0.4; transform: translateX(3px); }
+  50%      { opacity: 0.9; transform: translateX(-3px); }
+}
+.title-mythic {
+  display: inline-block;
+  position: relative;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  padding: 3px 12px 3px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(239,68,68,0.6);
+  background: linear-gradient(90deg, #1c0000, #6b0000, #c41c1c, #8b0000, #cc2020, #6b0000, #1c0000);
+  background-size: 250% 100%;
+  color: #fff;
+  text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 16px rgba(255,100,100,0.8), 0 0 30px rgba(220,38,38,0.5);
+  overflow: hidden;
+  animation: mythic-shimmer 2.8s linear infinite, mythic-text-flicker 3s ease-in-out infinite, mythic-border-glow 2s ease-in-out infinite;
+}
+.title-mythic::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -45%;
+  width: 20%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.75) 50%, rgba(255,255,255,0.15) 70%, transparent);
+  animation: mythic-wave-white 2.8s linear infinite;
+}
+.title-mythic::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -45%;
+  width: 16%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0,0,0,0.15) 30%, rgba(0,0,0,0.65) 50%, rgba(0,0,0,0.15) 70%, transparent);
+  animation: mythic-wave-black 2.8s linear infinite 1.4s;
+}
+@keyframes mythic-shimmer {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 250% 0%; }
+}
+@keyframes mythic-wave-white {
+  0%   { left: -45%; }
+  100% { left: 135%; }
+}
+@keyframes mythic-wave-black {
+  0%   { left: -45%; }
+  100% { left: 135%; }
+}
+@keyframes mythic-text-flicker {
+  0%,100% { text-shadow: 0 0 6px rgba(255,255,255,0.9), 0 0 16px rgba(255,100,100,0.8), 0 0 30px rgba(220,38,38,0.5); }
+  50%      { text-shadow: 0 0 10px rgba(255,255,255,1.0), 0 0 28px rgba(255,120,120,1.0), 0 0 50px rgba(220,38,38,0.8); }
+}
+@keyframes mythic-border-glow {
+  0%,100% { border-color: rgba(239,68,68,0.5); box-shadow: 0 0 12px rgba(220,38,38,0.55), 0 0 28px rgba(127,0,0,0.3); }
+  50%      { border-color: rgba(252,165,165,0.8); box-shadow: 0 0 22px rgba(239,68,68,0.9), 0 0 50px rgba(185,28,28,0.55); }
+}
+
+/* ══════════════════════════════════════════
+   РАМКИ КАРТОЧЕК ГЕРОЯ (косметика)
+   ══════════════════════════════════════════ */
+
+/* Базовое требование: position:relative на .character для ::before/::after рамок */
+.character { position: relative; }
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@property --chaos-angle {
+  syntax: '<angle>';
+  initial-value: 45deg;
+  inherits: false;
+}
+
+/* ⚡ Молния (Эпик) */
+.frame-lightning {
+  border: 2px solid transparent !important;
+  background:
+    linear-gradient(rgba(15,20,35,0.95), rgba(10,15,28,0.97)) padding-box,
+    linear-gradient(var(--angle), #facc15, #60a5fa, #facc15, #60a5fa) border-box !important;
+  animation: lightning-spin 1.8s linear infinite !important;
+}
+@keyframes lightning-spin {
+  0%   { --angle: 0deg;   box-shadow: 0 0 12px rgba(250,204,21,0.55), 0 0 30px rgba(96,165,250,0.15); }
+  50%  { --angle: 180deg; box-shadow: 0 0 12px rgba(96,165,250,0.65), 0 0 30px rgba(250,204,21,0.12); }
+  100% { --angle: 360deg; box-shadow: 0 0 12px rgba(250,204,21,0.55), 0 0 30px rgba(96,165,250,0.15); }
+}
+@supports not (background: linear-gradient(var(--angle), red, blue)) {
+  .frame-lightning { border: 2px solid #facc15 !important; animation: lightning-fb 1.8s ease-in-out infinite !important; }
+  @keyframes lightning-fb {
+    0%,100% { box-shadow: 0 0 14px rgba(250,204,21,0.7); }
+    50%      { box-shadow: 0 0 14px rgba(96,165,250,0.8); }
+  }
+}
+
+/* 🩸 Кровь Дракона (Эпик) */
+.frame-blood {
+  border: 2px solid #dc2626 !important;
+  box-shadow: 0 0 16px rgba(220,38,38,0.5), 0 0 40px rgba(239,68,68,0.18) !important;
+  animation: blood-pulse 2s ease-in-out infinite !important;
+}
+.frame-blood::before {
+  content: '';
+  position: absolute; top: -1px; left: 2px; right: 2px; height: 38%;
+  border-radius: 13px 13px 0 0;
+  background: linear-gradient(180deg, rgba(220,38,38,0.42) 0%, transparent 100%);
+  animation: blood-drip 2s ease-in-out infinite;
+  pointer-events: none; z-index: 1;
+}
+.frame-blood::after {
+  content: '';
+  position: absolute; bottom: -1px; left: 22%; right: 22%; height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(239,68,68,0.9), rgba(220,38,38,1), rgba(239,68,68,0.9), transparent);
+  border-radius: 0 0 2px 2px;
+  animation: blood-drip 2s ease-in-out infinite;
+  pointer-events: none; z-index: 1;
+}
+@keyframes blood-pulse {
+  0%,100% { box-shadow: 0 0 14px rgba(220,38,38,0.45), 0 0 35px rgba(239,68,68,0.14); }
+  50%      { box-shadow: 0 0 26px rgba(220,38,38,0.8), 0 0 55px rgba(239,68,68,0.3); }
+}
+@keyframes blood-drip {
+  0%,100% { opacity: 0.52; }
+  50%      { opacity: 1; }
+}
+
+/* 🌌 Бездна (Легенда) */
+.frame-void {
+  border: 2px solid #7c3aed !important;
+  animation: void-breathe 3s ease-in-out infinite !important;
+}
+.frame-void::before {
+  content: '';
+  position: absolute; inset: 0; border-radius: 11px;
+  background:
+    radial-gradient(ellipse 65% 50% at 25% 75%, rgba(124,58,237,0.22) 0%, transparent 100%),
+    radial-gradient(ellipse 55% 42% at 75% 25%, rgba(167,139,250,0.16) 0%, transparent 100%),
+    radial-gradient(ellipse 70% 55% at 50% 55%, rgba(109,40,217,0.10) 0%, transparent 100%);
+  animation: void-fog 7s ease-in-out infinite;
+  pointer-events: none; z-index: 1;
+}
+.frame-void::after {
+  content: '✦ ✧ ✦ ✧ ✦';
+  position: absolute; bottom: 6px; left: 0; right: 0;
+  font-size: 7px; color: rgba(167,139,250,0.55); letter-spacing: 4px; text-align: center;
+  animation: void-stars 4s ease-in-out infinite;
+  pointer-events: none; z-index: 1;
+}
+@keyframes void-breathe {
+  0%,100% { box-shadow: 0 0 14px rgba(124,58,237,0.45), 0 0 36px rgba(109,40,217,0.14); border-color: #7c3aed; }
+  50%      { box-shadow: 0 0 26px rgba(167,139,250,0.72), 0 0 60px rgba(124,58,237,0.28); border-color: #a78bfa; }
+}
+@keyframes void-fog {
+  0%,100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+@keyframes void-stars {
+  0%,100% { opacity: 0.4; transform: translateX(-2px); }
+  50%      { opacity: 0.9; transform: translateX(2px); }
+}
+
+/* 🌠 Астрал (Легенда) */
+.frame-astral {
+  border: 2px solid transparent !important;
+  background:
+    linear-gradient(rgba(5,12,22,0.95), rgba(8,10,20,0.97)) padding-box,
+    linear-gradient(135deg, #06b6d4, #818cf8, #06b6d4) border-box !important;
+  animation: astral-glow 4s ease-in-out infinite !important;
+}
+.frame-astral::before {
+  content: '· ✦ · ✧ · ★ · ✦ ·';
+  position: absolute; top: 5px; left: 0; right: 0;
+  font-size: 7px; color: rgba(129,140,248,0.55); letter-spacing: 3px; text-align: center;
+  animation: astral-drift 5s ease-in-out infinite;
+  pointer-events: none; z-index: 1;
+}
+.frame-astral::after {
+  content: '· ✧ · ✦ · ★ · ✧ ·';
+  position: absolute; bottom: 5px; left: 0; right: 0;
+  font-size: 7px; color: rgba(6,182,212,0.5); letter-spacing: 3px; text-align: center;
+  animation: astral-drift 5s ease-in-out infinite reverse;
+  pointer-events: none; z-index: 1;
+}
+@keyframes astral-glow {
+  0%,100% { box-shadow: 0 0 16px rgba(6,182,212,0.32), 0 0 42px rgba(129,140,248,0.1); }
+  50%      { box-shadow: 0 0 28px rgba(6,182,212,0.58), 0 0 68px rgba(129,140,248,0.24); }
+}
+@keyframes astral-drift {
+  0%,100% { opacity: 0.42; transform: translateX(-2px); }
+  50%      { opacity: 1;    transform: translateX(2px); }
+}
+
+/* ✨ Золото Валинора (Миф) */
+.frame-valinor {
+  border: 2px solid transparent !important;
+  background:
+    linear-gradient(rgba(18,12,3,0.97), rgba(12,8,2,0.98)) padding-box,
+    linear-gradient(135deg, #78350f, #fbbf24, #fde68a, #f59e0b, #92400e, #fbbf24, #78350f) border-box !important;
+  animation: valinor-pulse 3s ease-in-out infinite !important;
+  overflow: hidden !important;
+}
+.frame-valinor::before {
+  content: '';
+  position: absolute;
+  width: 200%; height: 200%; top: -50%; left: -50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg, transparent 160deg,
+    rgba(253,230,138,0.0) 162deg,
+    rgba(253,230,138,0.22) 168deg,
+    rgba(253,230,138,0.42) 172deg,
+    rgba(253,230,138,0.22) 176deg,
+    rgba(253,230,138,0.0) 178deg,
+    transparent 180deg, transparent 360deg
+  );
+  animation: valinor-spin 3s linear infinite;
+  pointer-events: none; z-index: 1;
+}
+.frame-valinor::after {
+  content: '';
+  position: absolute;
+  width: 200%; height: 200%; top: -50%; left: -50%;
+  background: conic-gradient(
+    from 180deg,
+    transparent 0deg, transparent 160deg,
+    rgba(253,230,138,0.0) 162deg,
+    rgba(253,230,138,0.14) 168deg,
+    rgba(253,230,138,0.24) 172deg,
+    rgba(253,230,138,0.14) 176deg,
+    rgba(253,230,138,0.0) 178deg,
+    transparent 180deg, transparent 360deg
+  );
+  animation: valinor-spin 3s linear infinite;
+  pointer-events: none; z-index: 2;
+}
+@keyframes valinor-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes valinor-pulse {
+  0%,100% { box-shadow: 0 0 16px rgba(251,191,36,0.38), 0 0 42px rgba(245,158,11,0.14); }
+  50%      { box-shadow: 0 0 30px rgba(253,230,138,0.7), 0 0 72px rgba(251,191,36,0.32); }
+}
+
+/* 💥 Хаос (Миф) */
+.frame-chaos {
+  border: 2px solid transparent !important;
+  background:
+    linear-gradient(rgba(16,4,20,0.97), rgba(10,3,16,0.98)) padding-box,
+    linear-gradient(var(--chaos-angle), #ec4899, #8b5cf6, #06b6d4, #10b981, #f59e0b, #ec4899) border-box !important;
+  animation: chaos-spin 2.5s linear infinite !important;
+}
+@keyframes chaos-spin {
+  0%   { --chaos-angle: 45deg;  box-shadow: 0 0 14px rgba(236,72,153,0.42); }
+  33%  { --chaos-angle: 165deg; box-shadow: 0 0 14px rgba(6,182,212,0.42); }
+  66%  { --chaos-angle: 285deg; box-shadow: 0 0 14px rgba(245,158,11,0.42); }
+  100% { --chaos-angle: 405deg; box-shadow: 0 0 14px rgba(236,72,153,0.42); }
+}
+@supports not (background: linear-gradient(var(--chaos-angle), red, blue)) {
+  .frame-chaos { border: 2px solid #ec4899 !important; animation: chaos-fb 2s ease-in-out infinite !important; }
+  @keyframes chaos-fb {
+    0%,100% { border-color: #ec4899; box-shadow: 0 0 14px rgba(236,72,153,0.6); }
+    33%      { border-color: #06b6d4; box-shadow: 0 0 14px rgba(6,182,212,0.6); }
+    66%      { border-color: #f59e0b; box-shadow: 0 0 14px rgba(245,158,11,0.6); }
+  }
+}
+
+/* ══════════════════════════════════════════
+   ЭФФЕКТЫ ВХОДА В БОЙ
+   ══════════════════════════════════════════ */
+
+
+/* Эпик: Слайд снизу */
+@keyframes entry-slide {
+  0%   { transform: translateY(28px); opacity: 0; }
+  62%  { transform: translateY(-3px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.entry-anim-slide { animation: entry-slide 0.55s cubic-bezier(0.34,1.56,0.64,1) both; }
+
+/* Эпик: Вспышка */
+@keyframes entry-flash {
+  0%   { opacity: 0; filter: brightness(4) blur(5px); transform: scale(0.87); }
+  32%  { opacity: 1; filter: brightness(1.7) blur(1px); transform: scale(1.05); }
+  100% { opacity: 1; filter: brightness(1) blur(0); transform: scale(1); }
+}
+.entry-anim-flash { animation: entry-flash 0.5s ease-out both; }
+
+/* Легенда: Материализация */
+@keyframes entry-materialize {
+  0%   { opacity: 0; transform: scale(1.2); filter: blur(12px) brightness(2.5); }
+  45%  { opacity: 0.8; transform: scale(1.05); filter: blur(2px) brightness(1.4); }
+  75%  { opacity: 1; transform: scale(0.98); filter: blur(0) brightness(1.05); }
+  100% { opacity: 1; transform: scale(1); filter: none; }
+}
+.entry-anim-materialize { animation: entry-materialize 0.85s ease-out both; }
+
+/* Легенда: Удар с небес */
+@keyframes entry-impact {
+  0%   { transform: translateY(-55px) scale(0.82); opacity: 0; filter: blur(3px); }
+  55%  { transform: translateY(5px) scale(1.05); opacity: 1; filter: blur(0); }
+  73%  { transform: translateY(-2px) scale(0.99); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes entry-impact-wave {
+  0%   { transform: scaleX(0.05); opacity: 0.9; }
+  60%  { transform: scaleX(1); opacity: 0.45; }
+  100% { transform: scaleX(1.5); opacity: 0; }
+}
+.entry-anim-impact { animation: entry-impact 0.65s cubic-bezier(0.22,1,0.36,1) both; }
+.entry-impact-line {
+  position: absolute; bottom: -4px; left: 5px; right: 5px; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(251,191,36,0.75), rgba(253,230,138,0.95), rgba(251,191,36,0.75), transparent);
+  border-radius: 1px; transform-origin: center;
+  animation: entry-impact-wave 0.65s ease-out both; pointer-events: none;
+}
+
+/* Миф: Разрыв пространства */
+@keyframes entry-rift {
+  0%   { opacity: 0; transform: scale(0); filter: blur(22px) brightness(6); }
+  38%  { opacity: 1; transform: scale(1.12); filter: blur(2px) brightness(2.5); }
+  65%  { transform: scale(0.97); filter: blur(0) brightness(1.1); }
+  100% { transform: scale(1); filter: none; opacity: 1; }
+}
+@keyframes entry-rift-flash {
+  0%,32%  { background: rgba(0,0,0,0); }
+  40%     { background: rgba(109,40,217,0.42); }
+  52%     { background: rgba(0,0,0,0.65); }
+  72%     { background: rgba(109,40,217,0.06); }
+  100%    { background: rgba(0,0,0,0); }
+}
+.entry-anim-rift { animation: entry-rift 0.95s cubic-bezier(0.22,1,0.36,1) both; }
+.entry-anim-rift-flash {
+  animation: entry-rift-flash 0.95s ease-out both;
+  position: absolute; inset: 0; border-radius: 12px;
+  pointer-events: none; z-index: 10;
+}
+
+/* Миф: Сияние Валинора */
+@keyframes entry-radiance {
+  0%   { transform: scale(0.4); opacity: 0; filter: brightness(6) blur(8px); }
+  30%  { transform: scale(1.1); opacity: 1; filter: brightness(2.8) blur(1px); box-shadow: 0 0 80px rgba(253,230,138,0.95), 0 0 160px rgba(245,158,11,0.5); }
+  58%  { transform: scale(0.98); filter: brightness(1.2) blur(0); box-shadow: 0 0 28px rgba(253,230,138,0.35); }
+  100% { transform: scale(1); filter: none; box-shadow: none; opacity: 1; }
+}
+@keyframes entry-radiance-ring {
+  0%   { transform: scale(0.75); opacity: 0.95; }
+  100% { transform: scale(3); opacity: 0; }
+}
+.entry-anim-radiance { animation: entry-radiance 0.9s cubic-bezier(0.34,1.4,0.64,1) both; }
+.entry-radiance-ring {
+  position: absolute; inset: -7px;
+  border: 2px solid rgba(253,230,138,0.7); border-radius: 12px;
+  animation: entry-radiance-ring 0.9s ease-out both;
+  pointer-events: none; z-index: 10;
+}
+
+/* ============================================================
+   ГАЧА — анимации
+   ============================================================ */
+
+.gacha-spin-anim {
+  font-size: 56px;
+  display: inline-block;
+  animation: gacha-spin 0.6s ease-in-out infinite;
+}
+
+@keyframes gacha-spin {
+  0%, 100% { transform: rotate(-15deg) scale(1); }
+  50%       { transform: rotate(15deg) scale(1.15); }
+}
+
+@keyframes gacha-pop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Название легендарной рулетки */
+.gacha-legendary-title {
+  font-size: 15px;
+  font-weight: 900;
+  color: #f59e0b;
+  text-shadow: 0 0 10px rgba(245,158,11,0.7);
+  animation: gacha-title-pulse 2s ease-in-out infinite;
+}
+
+@keyframes gacha-title-pulse {
+  0%, 100% { text-shadow: 0 0 8px rgba(245,158,11,0.6); }
+  50%       { text-shadow: 0 0 18px rgba(251,191,36,0.95), 0 0 30px rgba(245,158,11,0.4); }
+}
