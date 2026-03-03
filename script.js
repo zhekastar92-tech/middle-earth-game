@@ -2221,7 +2221,7 @@ function openArenaModal(idx) {
 const GACHA_POOLS = {
   guardian: {
     id: 'guardian',
-    hidden: false,
+    hidden: true,
     isLegendaryPool: true,
     name: 'Страж Врат Вечности',
     tagline: 'уже в игре!',
@@ -2239,7 +2239,7 @@ const GACHA_POOLS = {
   },
   warrior: {
     id: 'warrior',
-    hidden: true,
+    hidden: false,
     isLegendaryPool: true,
     name: 'Воин Сын Императора',
     tagline: 'Склонитесь! Воин Сын Императора прибыл!',
@@ -2327,7 +2327,7 @@ const MYTHIC_GACHA_POOLS = {
 
   guardian: {
     id: 'guardian',
-    hidden: false,
+    hidden: true,
     classId: 'guardian',
     icon: '🛡️',
     color: '#f43f5e',
@@ -2407,7 +2407,7 @@ const MYTHIC_GACHA_POOLS = {
 
   warrior: {
     id: 'warrior',
-    hidden: true,
+    hidden: false,
     classId: 'warrior',
     icon: '⚔️',
     color: '#ef4444',
