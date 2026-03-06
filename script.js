@@ -4168,20 +4168,20 @@ function encodeProfile() {
 // Декодирует строку ME-... обратно в объект профиля
 function decodeProfile(code) {
   try {
-    // Убираем префикс ME- и все дефисы
-    let clean = code.replace(/^ME-/i, '').replace(/-/g, '').toUpperCase();
-    // Последние 8 символов — подпись
+    // Убираем префикс ME- и все дефисы (НЕ toUpperCase — base64url чувствителен к регистру!)
+    let clean = code.replace(/^ME-/i, '').replace(/-/g, '');
+    // Последние 8 символов — подпись (profileChecksum возвращает base36.toUpperCase)
     let payload = clean.slice(0, -8);
-    let checksum = clean.slice(-8);
+    let checksum = clean.slice(-8).toUpperCase();
     let expected = profileChecksum(payload);
     if (expected !== checksum) return { ok: false, reason: 'Подпись не совпадает. Код повреждён или подделан.' };
-    // Декодируем base64
+    // Декодируем base64url
     let b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
     // Восстанавливаем padding
     while (b64.length % 4 !== 0) b64 += '=';
     let json = decodeURIComponent(escape(atob(b64)));
     let data = JSON.parse(json);
-    if (!data || (data.v !== 1 && data.v !== 2)) return { ok: false, reason: 'Устаревший формат кода.' };
+    if (!data || typeof data.v !== 'number') return { ok: false, reason: 'Не удалось прочитать код. Проверьте что скопировали полностью.' };
     return { ok: true, data };
   } catch(e) {
     return { ok: false, reason: 'Не удалось прочитать код. Проверьте что скопировали полностью.' };
