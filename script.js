@@ -2231,7 +2231,7 @@ function openArenaModal(idx) {
 const GACHA_POOLS = {
   guardian: {
     id: 'guardian',
-    hidden: false,
+    hidden: true,
     isLegendaryPool: true,
     name: 'Страж Врат Вечности',
     tagline: 'уже в игре!',
@@ -2267,7 +2267,7 @@ const GACHA_POOLS = {
   },
   darkknight: {
     id: 'darkknight',
-    hidden: true,
+    hidden: false,
     isLegendaryPool: true,
     name: 'Рыцарь Кровавого Затмения',
     tagline: 'Земля дрожит в страхе — Рыцарь Кровавого Затмения пробудился!',
@@ -2337,7 +2337,7 @@ const MYTHIC_GACHA_POOLS = {
 
   guardian: {
     id: 'guardian',
-    hidden: false,
+    hidden: true,
     classId: 'guardian',
     icon: '🛡️',
     color: '#f43f5e',
@@ -2377,7 +2377,7 @@ const MYTHIC_GACHA_POOLS = {
 
   darkknight: {
     id: 'darkknight',
-    hidden: true,
+    hidden: false,
     classId: 'darkknight',
     icon: '🦇',
     color: '#dc2626',
