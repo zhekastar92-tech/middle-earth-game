@@ -2393,7 +2393,7 @@ const GACHA_POOLS = {
   },
   darkknight: {
     id: 'darkknight',
-    hidden: false,
+    hidden: true,
     isLegendaryPool: true,
     name: 'Рыцарь Кровавого Затмения',
     tagline: 'Земля дрожит в страхе — Рыцарь Кровавого Затмения пробудился!',
@@ -2429,7 +2429,7 @@ const GACHA_POOLS = {
   },
   priest: {
     id: 'priest',
-    hidden: true,
+    hidden: false,
     isLegendaryPool: true,
     name: 'Ослепительное Солнце Жрец',
     tagline: 'Ослепительное Солнце Жрец явился чтобы сжечь врагов',
@@ -2503,7 +2503,7 @@ const MYTHIC_GACHA_POOLS = {
 
   darkknight: {
     id: 'darkknight',
-    hidden: false,
+    hidden: true,
     classId: 'darkknight',
     icon: '🦇',
     color: '#dc2626',
@@ -2523,7 +2523,7 @@ const MYTHIC_GACHA_POOLS = {
 
   priest: {
     id: 'priest',
-    hidden: true,
+    hidden: false,
     classId: 'priest',
     icon: '☀️',
     color: '#f59e0b',
