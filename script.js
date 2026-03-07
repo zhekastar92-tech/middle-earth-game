@@ -2638,8 +2638,8 @@ const MYTHIC_GACHA_POOLS = {
     tagline: 'Он решает — кому жить, кому нет.',
     cost: 25,
     titles: {
-      uncommon:  { label: 'Необычный',  name: 'Странствующий жрец',       chance: 0.15 },
-      rare:      { label: 'Редкий',     name: 'Жрец Ордена Рассвета',     chance: 0.07 },
+      uncommon:  { label: 'Необычный',  name: 'Светлый жрец',       chance: 0.15 },
+      rare:      { label: 'Редкий',     name: 'Странствующий жрец',     chance: 0.07 },
       epic:      { label: 'Эпический',  name: 'Жрец Ордена Рассвета',     chance: 0.02 },
       mythic:    { label: 'Мифический', name: 'Судья Созвездия',          chance: 0.002 }
     },
