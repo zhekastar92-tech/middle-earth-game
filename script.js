@@ -2517,7 +2517,7 @@ const GACHA_POOLS = {
   },
   assassin: {
     id: 'assassin',
-    hidden: true,
+    hidden: false,
     isLegendaryPool: true,
     name: 'Космический Захватчик Убийца',
     tagline: 'Мир обречён... Космический Захватчик Убийца уже здесь...',
@@ -2535,7 +2535,7 @@ const GACHA_POOLS = {
   },
   priest: {
     id: 'priest',
-    hidden: false,
+    hidden: true,
     isLegendaryPool: true,
     name: 'Ослепительное Солнце Жрец',
     tagline: 'Ослепительное Солнце Жрец явился чтобы сжечь врагов',
@@ -2589,7 +2589,7 @@ const MYTHIC_GACHA_POOLS = {
 
   assassin: {
     id: 'assassin',
-    hidden: true,
+    hidden: false,
     classId: 'assassin',
     icon: '🌙',
     color: '#7c3aed',
@@ -2629,7 +2629,7 @@ const MYTHIC_GACHA_POOLS = {
 
   priest: {
     id: 'priest',
-    hidden: false,
+    hidden: true,
     classId: 'priest',
     icon: '☀️',
     color: '#f59e0b',
